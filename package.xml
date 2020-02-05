@@ -1,0 +1,46 @@
+<package>
+    <name>neo_local_planner</name>
+    <version>1.0.0</version>
+    <description>
+
+        This package provides a spline based implementation to local robot navigation on a plane.
+
+		This package's ROS wrapper adheres to the
+        BaseLocalPlanner interface specified in the <a href="http://wiki.ros.org/nav_core">nav_core</a> package.
+
+    </description>
+    <author>Max Wittal</author>
+    <author>wittal@neobotix.de</author>
+    <maintainer email="ros@neobotix.de">Neobotix GmbH</maintainer>
+    <maintainer email="wittal@neobotix.de">Max Wittal</maintainer>
+    <license>BSD</license>
+    <url>http://wiki.ros.org/base_local_planner</url>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <build_depend>base_local_planner</build_depend>
+    <build_depend>cmake_modules</build_depend>
+    <build_depend>costmap_2d</build_depend>
+    <build_depend>dynamic_reconfigure</build_depend>
+    <build_depend>nav_core</build_depend>
+    <build_depend>nav_msgs</build_depend>
+    <build_depend>pluginlib</build_depend>
+    <build_depend>roscpp</build_depend>
+    <build_depend>tf</build_depend>
+
+    <run_depend>base_local_planner</run_depend>
+    <run_depend>costmap_2d</run_depend>
+    <run_depend>dynamic_reconfigure</run_depend>
+    <run_depend>nav_core</run_depend>
+    <run_depend>nav_msgs</run_depend>
+    <run_depend>pluginlib</run_depend>
+    <run_depend>roscpp</run_depend>
+    <run_depend>tf</run_depend>
+
+    <export>
+        <nav_core plugin="${prefix}/blp_plugin.xml" />
+    </export>
+
+</package>
+
+

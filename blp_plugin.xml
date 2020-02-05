@@ -1,0 +1,7 @@
+<library path="lib/libneo_local_planner">
+  <class name="neo_local_planner/NeoLocalPlanner" type="neo_local_planner::NeoLocalPlanner" base_class_type="nav_core::BaseLocalPlanner">
+    <description>
+      A implementation of a local planner.
+    </description>
+  </class>
+</library>
