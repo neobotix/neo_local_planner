@@ -45,8 +45,8 @@ tf::Vector3 calc_spline_pos(const double t,
 							const tf::Vector3& ddp)
 {
 	return tf::Vector3(
-		-( dq.x()+3.0*p.x()+5.0*dp.x()+4.0*ddp.x()+-3.0*q.x())*(t*t*t)/12.0+p.x()+dp.x()*t+ddp.x()*(t*t)/2.0,
-		(t*t)*ddp.y()/2.0+( 3.0*q.y()-dq.y()+-3.0*p.y()+-5.0*dp.y()+-4.0*ddp.y())*(t*t*t)/12.0+p.y()+dp.y()*t,
+		p.x()-( 6.0*p.x()+12.0*dp.x()+11.0*ddp.x()+-6.0*q.x()+6.0*dq.x())*(t*t*t)/36.0+ddp.x()*(t*t)/2.0+dp.x()*t,
+		(t*t)*ddp.y()/2.0-(t*t*t)*( 6.0*dq.y()+6.0*p.y()+12.0*dp.y()+11.0*ddp.y()+-6.0*q.y())/36.0+p.y()+dp.y()*t,
 		0
 	);
 }
@@ -57,8 +57,8 @@ tf::Vector3 calc_spline_dpos_dt(const double t,
 								const tf::Vector3& ddp)
 {
 	return tf::Vector3(
-		-( dq.x()+3.0*p.x()+5.0*dp.x()+4.0*ddp.x()+-3.0*q.x())*(t*t)/4.0+dp.x()+ddp.x()*t,
-		( 3.0*q.y()-dq.y()+-3.0*p.y()+-5.0*dp.y()+-4.0*ddp.y())*(t*t)/4.0+dp.y()+t*ddp.y(),
+		dp.x()-( 6.0*p.x()+12.0*dp.x()+11.0*ddp.x()+-6.0*q.x()+6.0*dq.x())*(t*t)/12.0+ddp.x()*t,
+		-(t*t)*( 6.0*dq.y()+6.0*p.y()+12.0*dp.y()+11.0*ddp.y()+-6.0*q.y())/12.0+dp.y()+t*ddp.y(),
 		0
 	);
 }
@@ -69,8 +69,32 @@ tf::Vector3 calc_spline_dpos_ddt(	const double t,
 									const tf::Vector3& ddp)
 {
 	return tf::Vector3(
-		-( dq.x()+3.0*p.x()+5.0*dp.x()+4.0*ddp.x()+-3.0*q.x())*t/2.0+ddp.x(),
-		( 3.0*q.y()-dq.y()+-3.0*p.y()+-5.0*dp.y()+-4.0*ddp.y())*t/2.0+ddp.y(),
+		-( 6.0*p.x()+12.0*dp.x()+11.0*ddp.x()+-6.0*q.x()+6.0*dq.x())*t/6.0+ddp.x(),
+		ddp.y()-t*( 6.0*dq.y()+6.0*p.y()+12.0*dp.y()+11.0*ddp.y()+-6.0*q.y())/6.0,
+		0
+	);
+}
+
+tf::Vector3 calc_spline_1_pos(	const double t,
+								const tf::Vector3& p, const tf::Vector3& q,
+								const tf::Vector3& dp, const tf::Vector3& dq,
+								const tf::Vector3& ddp)
+{
+	return tf::Vector3(
+		( 12.0*p.x()+18.0*dp.x()+7.0*ddp.x()+-12.0*q.x()+18.0*dq.x())*(t*t*t)/36.0+(5.0/6.0)*p.x()+(2.0/3.0)*dp.x()+(7.0/36.0)*ddp.x()-t*( 6.0*p.x()-ddp.x()+-6.0*q.x()+6.0*dq.x())/12.0+q.x()/6.0-dq.x()/6.0-( 6.0*p.x()+12.0*dp.x()+5.0*ddp.x()+-6.0*q.x()+6.0*dq.x())*(t*t)/12.0,
+		-( 6.0*dq.y()+6.0*p.y()-ddp.y()+-6.0*q.y())*t/12.0-dq.y()/6.0+(5.0/6.0)*p.y()+(2.0/3.0)*dp.y()-( 6.0*dq.y()+6.0*p.y()+12.0*dp.y()+5.0*ddp.y()+-6.0*q.y())*(t*t)/12.0+(7.0/36.0)*ddp.y()+( 18.0*dq.y()+12.0*p.y()+18.0*dp.y()+7.0*ddp.y()+-12.0*q.y())*(t*t*t)/36.0+q.y()/6.0,
+		0
+	);
+}
+
+tf::Vector3 calc_spline_1_dpos_dt(	const double t,
+									const tf::Vector3& p, const tf::Vector3& q,
+									const tf::Vector3& dp, const tf::Vector3& dq,
+									const tf::Vector3& ddp)
+{
+	return tf::Vector3(
+		-p.x()/2.0+( 12.0*p.x()+18.0*dp.x()+7.0*ddp.x()+-12.0*q.x()+18.0*dq.x())*(t*t)/12.0-( 6.0*p.x()+12.0*dp.x()+5.0*ddp.x()+-6.0*q.x()+6.0*dq.x())*t/6.0+ddp.x()/12.0+q.x()/2.0-dq.x()/2.0,
+		-dq.y()/2.0-p.y()/2.0+( 18.0*dq.y()+12.0*p.y()+18.0*dp.y()+7.0*ddp.y()+-12.0*q.y())*(t*t)/12.0+ddp.y()/12.0-( 6.0*dq.y()+6.0*p.y()+12.0*dp.y()+5.0*ddp.y()+-6.0*q.y())*t/6.0+q.y()/2.0,
 		0
 	);
 }
@@ -81,8 +105,8 @@ tf::Vector3 calc_spline_2_pos(	const double t,
 								const tf::Vector3& ddp)
 {
 	return tf::Vector3(
-		(t*t*t)*( 4.0*ddp.x()+-9.0*q.x()+7.0*dq.x()+9.0*p.x()+11.0*dp.x())/12.0+ddp.x()/6.0+q.x()/4.0+t*( 3.0*q.x()-dq.x()+-3.0*p.x()-dp.x())/4.0-(t*t)*( 2.0*ddp.x()+-3.0*q.x()+dq.x()+3.0*p.x()+5.0*dp.x())/4.0-dq.x()/12.0+(3.0/4.0)*p.x()+(7.0/12.0)*dp.x(),
-		(3.0/4.0)*p.y()-( 3.0*p.y()+dp.y()+-3.0*q.y()+dq.y())*t/4.0+(7.0/12.0)*dp.y()+(t*t*t)*( 9.0*p.y()+11.0*dp.y()+4.0*ddp.y()+-9.0*q.y()+7.0*dq.y())/12.0+ddp.y()/6.0+q.y()/4.0-( 3.0*p.y()+5.0*dp.y()+2.0*ddp.y()+-3.0*q.y()+dq.y())*(t*t)/4.0-dq.y()/12.0,
+		p.x()/6.0-(t*t*t)*( 3.0*p.x()+3.0*dp.x()+ddp.x()+-3.0*q.x()+6.0*dq.x())/18.0+dp.x()/6.0+(t*t)*( 3.0*p.x()+3.0*dp.x()+ddp.x()+-3.0*q.x()+6.0*dq.x())/6.0+ddp.x()/18.0-( 3.0*p.x()+3.0*dp.x()+ddp.x()+-3.0*q.x())*t/6.0+(5.0/6.0)*q.x()+-(2.0/3.0)*dq.x(),
+		-(2.0/3.0)*dq.y()+( 6.0*dq.y()+3.0*p.y()+3.0*dp.y()+ddp.y()+-3.0*q.y())*(t*t)/6.0+p.y()/6.0-( 6.0*dq.y()+3.0*p.y()+3.0*dp.y()+ddp.y()+-3.0*q.y())*(t*t*t)/18.0-( 3.0*p.y()+3.0*dp.y()+ddp.y()+-3.0*q.y())*t/6.0+dp.y()/6.0+ddp.y()/18.0+(5.0/6.0)*q.y(),
 		0
 	);
 }
@@ -93,16 +117,20 @@ tf::Vector3 calc_spline_2_dpos_dt(	const double t,
 									const tf::Vector3& ddp)
 {
 	return tf::Vector3(
-		(3.0/4.0)*q.x()+(t*t)*( 4.0*ddp.x()+-9.0*q.x()+7.0*dq.x()+9.0*p.x()+11.0*dp.x())/4.0-t*( 2.0*ddp.x()+-3.0*q.x()+dq.x()+3.0*p.x()+5.0*dp.x())/2.0-dq.x()/4.0+-(3.0/4.0)*p.x()-dp.x()/4.0,
-		-(3.0/4.0)*p.y()-t*( 3.0*p.y()+5.0*dp.y()+2.0*ddp.y()+-3.0*q.y()+dq.y())/2.0-dp.y()/4.0+(3.0/4.0)*q.y()+( 9.0*p.y()+11.0*dp.y()+4.0*ddp.y()+-9.0*q.y()+7.0*dq.y())*(t*t)/4.0-dq.y()/4.0,
+		-p.x()/2.0-dp.x()/2.0-(t*t)*( 3.0*p.x()+3.0*dp.x()+ddp.x()+-3.0*q.x()+6.0*dq.x())/6.0-ddp.x()/6.0+t*( 3.0*p.x()+3.0*dp.x()+ddp.x()+-3.0*q.x()+6.0*dq.x())/3.0+q.x()/2.0,
+		( 6.0*dq.y()+3.0*p.y()+3.0*dp.y()+ddp.y()+-3.0*q.y())*t/3.0-( 6.0*dq.y()+3.0*p.y()+3.0*dp.y()+ddp.y()+-3.0*q.y())*(t*t)/6.0-p.y()/2.0-dp.y()/2.0-ddp.y()/6.0+q.y()/2.0,
 		0
 	);
 }
 
 NeoLocalPlanner::NeoLocalPlanner()
 {
+	m_limits.min_vel_x = -0.2;
 	m_limits.max_vel_x = 1;
+	m_limits.min_rot_vel = 0.1;
+	m_limits.max_rot_vel = 1;
 	m_limits.min_trans_vel = 0.1;
+	m_limits.max_trans_vel = 1;
 	m_limits.rot_stopped_vel = 0.01;
 	m_limits.trans_stopped_vel = 0.1;
 	m_limits.yaw_goal_tolerance = 0.05;
@@ -143,6 +171,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 	const double start_yaw = tf::getYaw(local_pose.getRotation());
 	const double start_vel = m_odometry->twist.twist.linear.x;
+	const double start_yawrate = m_odometry->twist.twist.angular.z;
 
 	// transform plan
 	std::vector<tf::Pose> local_plan;
@@ -186,14 +215,15 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// if target is not goal, compute kinematics based target orientation
 	if(!is_goal_target)
 	{
-		// TODO: global path doesnt have orientation
+		target_yaw = ::atan2(	iter_target_2->getOrigin().y() - iter_target->getOrigin().y(),
+								iter_target_2->getOrigin().x() - iter_target->getOrigin().x());
 	}
 
 	// compute target velocity
 	double target_vel = 0;
 
 	if(iter_target + 1 != local_plan.end()) {
-		target_vel = m_limits.max_vel_x;
+		target_vel = m_limits.max_trans_vel;
 	}
 
 	// compute spline based control values
@@ -203,84 +233,90 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const tf::Vector3 p = local_pose.getOrigin();
 	const tf::Vector3 q = iter_target->getOrigin();
 
-	const double total_dist = (q - p).length();
-	const double time_to_target = total_dist / ((start_vel_spline + target_vel_spline) / 2);
+	const double total_pos_dist = (q - p).length();
+	const double total_yaw_dist = fabs(angles::shortest_angular_distance(tf::getYaw(local_pose.getRotation()), target_yaw));
+	const double time_to_target = fmax(fmax(m_min_move_time,
+											total_pos_dist / ((fabs(start_vel) + m_limits.max_trans_vel + fabs(target_vel)) / 3)),
+											total_yaw_dist / ((fabs(start_yawrate) + m_limits.max_rot_vel + 0) / 3));
 	const double time_factor = 2 / time_to_target;		// we have two splines to reach target
 
 	const tf::Vector3 dp = local_pose.getBasis() * tf::Vector3(start_vel_spline * time_factor, 0, 0);
 	const tf::Vector3 dq = tf::Matrix3x3(tf::createQuaternionFromYaw(target_yaw)) * tf::Vector3(target_vel_spline * time_factor, 0, 0);
 
-	const tf::Vector3 ddp = tf::Vector3();	// TODO
+	const tf::Vector3 ddp = tf::Vector3();
 
 	const double dt = (ros::Time::now() - m_odometry->header.stamp).toSec() + m_control_delay;
-	const double ds = start_vel_spline	* dt;
+	const double s = fmin(dt * time_factor, 2);
 
-	// find control point on spline
-	double t = 0;
+	// predict future pose (using second order midpoint method)
+	tf::Vector3 actual_pos;
+	double actual_yaw = 0;
 	{
-		double dist = 0;
-		tf::Vector3 last_pos = p;
-
-		for(int i = 1; i <= 1000; ++i)
-		{
-			t = i * 0.001;
-			const tf::Vector3 pos = calc_spline_pos(t, p, q, dp, dq, ddp);
-			dist += (pos - last_pos).length();
-			last_pos = pos;
-
-			if(dist >= ds) {
-				break;
-			}
-		}
+		const double midpoint_yaw = start_yaw + start_yawrate * dt / 2;
+		actual_pos = p + tf::Matrix3x3(tf::createQuaternionFromYaw(midpoint_yaw)) * tf::Vector3(start_vel * dt, 0, 0);
+		actual_yaw = start_yaw + start_yawrate * dt;
 	}
 
-	// compute control velocity
-	const tf::Vector3 dpos_dt = calc_spline_dpos_dt(t, p, q, dp, dq, ddp);
-	const double control_vel = dpos_dt.length() / time_factor;
+	// compute desired position, velocity and orientation
+	tf::Vector3 desired_pos;
+	tf::Vector3 desired_dpos_dt;
+	// if(s <= 1) {
+	// 	desired_pos = calc_spline_pos(s, p, q, dp, dq, ddp);
+	// 	desired_dpos_dt = calc_spline_dpos_dt(s, p, q, dp, dq, ddp);
+	// } else if(s <= 2) {
+	// 	desired_pos = calc_spline_1_pos(s - 1, p, q, dp, dq, ddp);
+	// 	desired_dpos_dt = calc_spline_1_dpos_dt(s - 1, p, q, dp, dq, ddp);
+	// } else {
+	// 	desired_pos = calc_spline_2_pos(s - 2, p, q, dp, dq, ddp);
+	// 	desired_dpos_dt = calc_spline_2_dpos_dt(s - 2, p, q, dp, dq, ddp);
+	// }
+	// const double desired_vel = desired_dpos_dt.length() / time_factor;
+	// const double desired_yaw = ::atan2(desired_dpos_dt.y(), desired_dpos_dt.x());
 
-	// compute control yawrate
-	// const tf::Vector3 dpos_ddt = calc_spline_dpos_ddt(t, p, q, dp, dq, ddp);
-	// const double control_yawrate = ::atan2(dpos_ddt.y(), dpos_ddt.x()) / time_factor;
-	const tf::Vector3 dpos_dt_2 = calc_spline_dpos_dt(t * 2, p, q, dp, dq, ddp);
-	const double control_yaw = ::atan2(dpos_dt_2.y(), dpos_dt_2.x());
-	const double delta_yaw = angles::shortest_angular_distance(start_yaw, control_yaw);
-	const double control_yawrate = (delta_yaw / (2 * dt)) * m_yaw_gain;
-	// const tf::Vector3 dpos_dt_2 = calc_spline_dpos_dt(t + 0.001, p, q, dp, dq, ddp);
-	// const double control_yawrate = angles::shortest_angular_distance(::atan2(dpos_dt.y(), dpos_dt.x()), ::atan2(dpos_dt_2.y(), dpos_dt_2.x()))
-	// 								/ 0.001 / time_factor;
+	desired_pos = iter_target->getOrigin();
+	const double desired_vel = target_vel;
+	const double desired_yaw = target_yaw;
 
-	cmd_vel.linear.x = control_vel;
+	// compute control values
+	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * desired_pos;
+	const double yaw_error = angles::shortest_angular_distance(actual_yaw, desired_yaw);
+	const double control_vel = desired_vel + pos_error.x() * m_pos_gain;
+	const double control_yawrate = yaw_error * m_yaw_gain + (fabs(start_vel) >= m_limits.min_trans_vel ? pos_error.y() / start_vel * m_yaw_pos_gain : 0);
+
+	cmd_vel.linear.x = fmin(fmax(control_vel, m_limits.min_vel_x), m_limits.max_vel_x);
 	cmd_vel.linear.y = 0;
 	cmd_vel.linear.z = 0;
 	cmd_vel.angular.x = 0;
 	cmd_vel.angular.y = 0;
-	cmd_vel.angular.z = control_yawrate;
+	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 
-	// debug output
-	ROS_INFO_NAMED("NeoLocalPlanner", "dist_short=%f, total_dist=%f, time_to_target=%f, dt=%f, ds=%f, t=%f, cmd_vel=%f, cmd_yawrate=%f, target_yaw=%f",
-					dist_short, total_dist, time_to_target, dt, ds, t, control_vel, control_yawrate, target_yaw);
+	ROS_INFO_NAMED("NeoLocalPlanner", "time_to_target=%f, target_yaw=%f, dt=%f, s=%f, pos_error=(%f, %f), yaw_error=%f, cmd_vel=%f, cmd_yawrate=%f",
+					time_to_target, target_yaw, dt, s, pos_error.x(), pos_error.y(), yaw_error, control_vel, control_yawrate);
 
-	// visualize first spline
+	// visualize spline
 	{
 		nav_msgs::Path path;
 		path.header.stamp = m_odometry->header.stamp;
 		path.header.frame_id = m_local_frame;
 
-		for(int i = 1; i <= 200; ++i)
+		for(int i = 1; i <= 300; ++i)
 		{
-			const double t_i = i * 0.01;
+			const double s_i = i * 0.01;
 			tf::Vector3 pos;
 			tf::Vector3 dpos_dt;
-			if(t_i <= 1) {
-				pos = calc_spline_pos(t_i, p, q, dp, dq, ddp);
-				dpos_dt = calc_spline_dpos_dt(t_i, p, q, dp, dq, ddp);
+			if(s_i <= 1) {
+				pos = calc_spline_pos(s_i, p, q, dp, dq, ddp);
+				dpos_dt = calc_spline_dpos_dt(s_i, p, q, dp, dq, ddp);
+			} else if(s_i <= 2) {
+				pos = calc_spline_1_pos(s_i - 1, p, q, dp, dq, ddp);
+				dpos_dt = calc_spline_1_dpos_dt(s_i - 1, p, q, dp, dq, ddp);
 			} else {
-				pos = calc_spline_2_pos(t_i - 1, p, q, dp, dq, ddp);
-				dpos_dt = calc_spline_2_dpos_dt(t_i - 1, p, q, dp, dq, ddp);
+				pos = calc_spline_2_pos(s_i - 2, p, q, dp, dq, ddp);
+				dpos_dt = calc_spline_2_dpos_dt(s_i - 2, p, q, dp, dq, ddp);
 			}
 
 			tf::Stamped<tf::Pose> pose;
-			pose.stamp_ = m_odometry->header.stamp + ros::Duration(t_i / time_factor);
+			pose.stamp_ = m_odometry->header.stamp + ros::Duration(s_i / time_factor);
 			pose.frame_id_ = m_local_frame;
 			pose.setOrigin(pos);
 			pose.setRotation(tf::createQuaternionFromYaw(::atan2(dpos_dt.y(), dpos_dt.x())));
