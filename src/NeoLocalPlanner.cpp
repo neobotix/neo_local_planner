@@ -267,14 +267,15 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;
-	m_global_frame = costmap_ros->getGlobalFrameID();
+	m_local_frame = costmap_ros->getGlobalFrameID();
 	m_base_frame = costmap_ros->getBaseFrameID();
 
 	m_odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 1, boost::bind(&NeoLocalPlanner::odomCallback, this, _1));
 
 	m_local_plan_pub = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
 
-	ROS_INFO_NAMED("NeoLocalPlanner", "base_frame=%s, global_frame=%s", m_base_frame.c_str(), m_local_frame.c_str());
+	ROS_INFO_NAMED("NeoLocalPlanner", "base_frame=%s, local_frame=%s, global_frame=%s",
+			m_base_frame.c_str(), m_local_frame.c_str(), m_global_frame.c_str());
 }
 
 void NeoLocalPlanner::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
