@@ -53,10 +53,10 @@ private:
 	double m_lookahead_time = 0.2;		// [s]
 	double m_lookahead_dist = 0.5;		// [m]
 	double m_max_y_error = 0.2;			// [m]
-	double m_max_yaw_error = 0.3;		// [rad]
+	double m_max_yaw_error = 0.5;		// [rad]
 	double m_pos_x_gain = 1;			// [1/s]
-	double m_pos_y_gain = 1;			// [rad/s^2]
-	double m_yaw_gain = 1;				// [1/s]
+	double m_pos_y_gain = 10;			// [rad/s^2]
+	double m_yaw_gain = 10;				// [1/s]
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 
