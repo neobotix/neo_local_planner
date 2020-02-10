@@ -185,20 +185,20 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	}
 
 	// ensure minimum translational velocity
-	if(control_vel > 0) {
-		control_vel = fmax(control_vel, m_limits.min_trans_vel);
-	}
-	if(control_vel < 0) {
-		control_vel = fmin(control_vel, -1 * m_limits.min_trans_vel);
-	}
+	// if(control_vel > 0) {
+	// 	control_vel = fmax(control_vel, m_limits.min_trans_vel);
+	// }
+	// if(control_vel < 0) {
+	// 	control_vel = fmin(control_vel, -1 * m_limits.min_trans_vel);
+	// }
 
 	// ensure minimum rotational velocity
-	if(control_yawrate > 0) {
-		control_yawrate = fmax(control_yawrate, m_limits.min_rot_vel);
-	}
-	if(control_yawrate < 0) {
-		control_yawrate = fmin(control_yawrate, -1 * m_limits.min_rot_vel);
-	}
+	// if(control_yawrate > 0) {
+	// 	control_yawrate = fmax(control_yawrate, m_limits.min_rot_vel);
+	// }
+	// if(control_yawrate < 0) {
+	// 	control_yawrate = fmin(control_yawrate, -1 * m_limits.min_rot_vel);
+	// }
 
 	cmd_vel.linear.x = fmin(fmax(control_vel, m_limits.min_vel_x), m_limits.max_vel_x);
 	cmd_vel.linear.y = 0;
