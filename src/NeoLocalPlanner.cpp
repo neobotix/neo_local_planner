@@ -41,14 +41,14 @@ std::vector<tf::Pose>::const_iterator move_along_path(	std::vector<tf::Pose>::co
 
 NeoLocalPlanner::NeoLocalPlanner()
 {
-	m_limits.min_vel_x = -0.2;
-	m_limits.max_vel_x = 1;
+	m_limits.min_vel_x = -0.1;
+	m_limits.max_vel_x = 0.5;
 	m_limits.min_rot_vel = 0.1;
-	m_limits.max_rot_vel = 1;
+	m_limits.max_rot_vel = 0.5;
 	m_limits.min_trans_vel = 0.1;
-	m_limits.max_trans_vel = 1;
-	m_limits.rot_stopped_vel = 0.5 * m_limits.min_rot_vel;
-	m_limits.trans_stopped_vel = 0.5 * m_limits.min_trans_vel;
+	m_limits.max_trans_vel = m_limits.max_vel_x;
+	m_limits.rot_stopped_vel = 0.2 * m_limits.min_rot_vel;
+	m_limits.trans_stopped_vel = 0.2 * m_limits.min_trans_vel;
 	m_limits.yaw_goal_tolerance = 0.02;
 	m_limits.xy_goal_tolerance = 0.05;
 }
