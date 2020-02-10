@@ -165,7 +165,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	else
 	{
 		// use term for lane keeping
-		control_vel = fmax(m_limits.max_trans_vel * (1 - fabs(yaw_error) / m_max_yaw_error), 0);
+		const double y_factor = fmax(1 - fabs(pos_error.y()) / m_max_y_error, 0);
+		const double yaw_factor = fmax(1 - fabs(yaw_error) / m_max_yaw_error, 0);
+		control_vel = m_limits.max_trans_vel * fmax(fmin(pow(y_factor, 0.5), pow(yaw_factor, 0.5)), 0);
 	}
 
 	if(fabs(start_vel) > m_limits.trans_stopped_vel)
