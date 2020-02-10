@@ -50,13 +50,12 @@ private:
 	std::string m_local_frame = "odom";
 	std::string m_base_frame = "base_link";
 
-	double m_lookahead_time = 1;		// [s]
+	double m_lookahead_time = 0.2;		// [s]
 	double m_lookahead_dist = 0.5;		// [m]
-	double m_min_move_time = 0.5;		// [s]
-	double m_control_delay = 0.2;		// [s]
-	double m_pos_gain = 1;				// [1/s]
-	double m_yaw_gain = 3;				// [1/s]
-	double m_yaw_pos_gain = 10;			// [rad/s^2]
+	double m_max_yaw_error = 0.3;		// [rad]
+	double m_pos_x_gain = 1;			// [1/s]
+	double m_pos_y_gain = 1;			// [rad/s^2]
+	double m_yaw_gain = 1;				// [1/s]
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 
