@@ -291,8 +291,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.angular.y = 0;
 	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 
-	ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, state=%d, cmd_vel=%f, cmd_yawrate=%f",
-					dt, target_yaw, pos_error.x(), pos_error.y(), yaw_error, m_state, control_vel_x, control_yawrate);
+	ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
+					dt, target_yaw, pos_error.x(), pos_error.y(), yaw_error, m_state, control_vel_x, control_vel_y, control_yawrate);
 
 	return true;
 }
