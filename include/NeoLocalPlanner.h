@@ -58,6 +58,7 @@ private:
 	double m_pos_y_gain = 0;			// [rad/s^2]
 	double m_yaw_gain = 0;				// [1/s]
 	double m_static_yaw_gain = 0;		// [1/s]
+	double m_max_curve_vel = 0;			// [m*rad/s^2]
 
 	enum state_t {
 		STATE_IDLE,

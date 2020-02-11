@@ -203,12 +203,18 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		m_state = state_t::STATE_ROTATING;
 	}
 
+	// limit curve velocity
+	if(control_vel_x > 0) {
+		control_vel_x = fmin(control_vel_x, m_max_curve_vel / fabs(control_yawrate));
+	}
+
 	// apply acceleration limits
 	control_vel_x = fmin(control_vel_x, start_vel + m_limits.acc_lim_x * dt);
 
 	if(control_vel_x > 0 && start_vel > 0)
 	{
-		const double max_vel_x = 2 * goal_dist / start_vel * m_limits.acc_lim_x;
+		// limit veloicty when approaching goal position
+		const double max_vel_x = goal_dist / start_vel * m_limits.acc_lim_x;
 		control_vel_x = fmin(control_vel_x, max_vel_x);
 	}
 
@@ -317,6 +323,7 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
 	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
 	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
+	m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", m_limits.min_trans_vel * m_limits.max_rot_vel);
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;
