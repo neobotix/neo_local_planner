@@ -181,10 +181,10 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 		m_state = state_t::STATE_TRANSLATING;
 	}
-	else if(is_goal_target && fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
-											0.35 * m_limits.xy_goal_tolerance : 0.7 * m_limits.xy_goal_tolerance))
+	else if(fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
+									0.35 * m_limits.xy_goal_tolerance : 0.7 * m_limits.xy_goal_tolerance))
 	{
-		// we are not translating but goal not reached either, use term for static y error
+		// we are not translating, use term for static y error
 		control_yawrate = (pos_error.y() > 0 ? 1 : -1) * m_limits.max_rot_vel;
 
 		m_state = state_t::STATE_ADJUSTING;
