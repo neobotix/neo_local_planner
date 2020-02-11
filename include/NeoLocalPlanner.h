@@ -50,14 +50,14 @@ private:
 	std::string m_local_frame = "odom";
 	std::string m_base_frame = "base_link";
 
-	double m_lookahead_time = 0.2;		// [s]
-	double m_lookahead_dist = 0.5;		// [m]
-	double m_max_y_error = 0.2;			// [m]
-	double m_max_yaw_error = 0.5;		// [rad]
-	double m_pos_x_gain = 1;			// [1/s]
-	double m_pos_y_gain = 1;			// [rad/s^2]
-	double m_yaw_gain = 1;				// [1/s]
-	double m_static_yaw_gain = 3;		// [1/s]
+	double m_lookahead_time = 0;		// [s]
+	double m_lookahead_dist = 0;		// [m]
+	double m_max_y_error = 0;			// [m]
+	double m_max_yaw_error = 0;			// [rad]
+	double m_pos_x_gain = 0;			// [1/s]
+	double m_pos_y_gain = 0;			// [rad/s^2]
+	double m_yaw_gain = 0;				// [1/s]
+	double m_static_yaw_gain = 0;		// [1/s]
 
 	enum state_t {
 		STATE_IDLE,

@@ -41,16 +41,6 @@ std::vector<tf::Pose>::const_iterator move_along_path(	std::vector<tf::Pose>::co
 
 NeoLocalPlanner::NeoLocalPlanner()
 {
-	m_limits.min_vel_x = -0.1;
-	m_limits.max_vel_x = 0.5;
-	m_limits.min_rot_vel = 0.1;
-	m_limits.max_rot_vel = 0.5;
-	m_limits.min_trans_vel = 0.1;
-	m_limits.max_trans_vel = m_limits.max_vel_x;
-	m_limits.rot_stopped_vel = 0.5 * m_limits.min_rot_vel;
-	m_limits.trans_stopped_vel = 0.5 * m_limits.min_trans_vel;
-	m_limits.yaw_goal_tolerance = 0.02;
-	m_limits.xy_goal_tolerance = 0.05;
 }
 
 NeoLocalPlanner::~NeoLocalPlanner()
@@ -273,9 +263,28 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~/" + name);
 
+	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
+	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
+	m_max_y_error = 		private_nh.param<double>("max_y_error", 0.2);
+	m_max_yaw_error = 		private_nh.param<double>("max_yaw_error", 0.5);
+	m_pos_x_gain = 			private_nh.param<double>("pos_x_gain", 1);
+	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
+	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
+	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
+
+	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
+	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
+	m_limits.min_rot_vel = 			private_nh.param<double>("min_rot_vel", 0.1);
+	m_limits.max_rot_vel = 			private_nh.param<double>("max_rot_vel", 0.5);
+	m_limits.min_trans_vel = 		private_nh.param<double>("min_trans_vel", 0.1);
+	m_limits.max_trans_vel = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
+	m_limits.rot_stopped_vel = 		private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_rot_vel);
+	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_trans_vel);
+	m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
+	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.05);
+
 	m_tf = tf;
 	m_cost_map = costmap_ros;
-	m_local_frame = costmap_ros->getGlobalFrameID();
 	m_base_frame = costmap_ros->getBaseFrameID();
 
 	m_odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 1, boost::bind(&NeoLocalPlanner::odomCallback, this, _1));
