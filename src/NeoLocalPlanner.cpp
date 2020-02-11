@@ -62,6 +62,11 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		return false;
 	}
 
+	// compute delta time
+	const ros::WallTime time_now = ros::WallTime::now();
+	const double dt = fmax(fmin((time_now - m_last_time).toSec(), 0.1), 0);
+	m_last_time = time_now;
+
 	// get latest global to local transform (map to odom)
 	tf::StampedTransform global_to_local;
 	try {
@@ -147,24 +152,25 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const tf::Vector3 target_pos = iter_target->getOrigin();
 
 	// compute errors
+	const double goal_dist = (local_plan.back().getOrigin() - local_pose.getOrigin()).length();
 	const double yaw_error = angles::shortest_angular_distance(actual_yaw, target_yaw);
 	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
 
 	// compute control values
-	double control_vel = 0;
+	double control_vel_x = 0;
 	double control_yawrate = 0;
 
 	if(is_goal_target)
 	{
 		// use term for final stopping position
-		control_vel = pos_error.x() * m_pos_x_gain;
+		control_vel_x = pos_error.x() * m_pos_x_gain;
 	}
 	else
 	{
 		// use term for lane keeping
 		const double y_factor = fmax(1 - fabs(pos_error.y()) / m_max_y_error, 0);
 		const double yaw_factor = fmax(1 - fabs(yaw_error) / m_max_yaw_error, 0);
-		control_vel = m_limits.max_trans_vel * fmax(fmin(y_factor, yaw_factor), 0);
+		control_vel_x = m_limits.max_trans_vel * fmax(fmin(y_factor, yaw_factor), 0);
 	}
 
 	if(fabs(start_vel) > (m_state == state_t::STATE_TRANSLATING ?
@@ -197,15 +203,37 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		m_state = state_t::STATE_ROTATING;
 	}
 
-	cmd_vel.linear.x = fmin(fmax(control_vel, m_limits.min_vel_x), m_limits.max_vel_x);
+	// apply acceleration limits
+	control_vel_x = fmin(control_vel_x, start_vel + m_limits.acc_lim_x * dt);
+
+	if(control_vel_x > 0 && start_vel > 0)
+	{
+		const double max_vel_x = 2 * goal_dist / start_vel * m_limits.acc_lim_x;
+		control_vel_x = fmin(control_vel_x, max_vel_x);
+	}
+
+	switch(m_state)
+	{
+		case state_t::STATE_ADJUSTING:
+		case state_t::STATE_ROTATING:
+			if(control_yawrate > 0) {
+				control_yawrate = fmin(control_yawrate, start_yawrate + m_limits.acc_lim_theta * dt);
+			} else {
+				control_yawrate = fmax(control_yawrate, start_yawrate - m_limits.acc_lim_theta * dt);
+			}
+			break;
+	}
+
+	// fill return data
+	cmd_vel.linear.x = fmin(fmax(control_vel_x, m_limits.min_vel_x), m_limits.max_vel_x);
 	cmd_vel.linear.y = 0;
 	cmd_vel.linear.z = 0;
 	cmd_vel.angular.x = 0;
 	cmd_vel.angular.y = 0;
 	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 
-	ROS_INFO_NAMED("NeoLocalPlanner", "target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, cmd_vel=%f, cmd_yawrate=%f",
-					target_yaw, pos_error.x(), pos_error.y(), yaw_error, control_vel, control_yawrate);
+	ROS_INFO_NAMED("NeoLocalPlanner", "target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, dt=%f, cmd_vel=%f, cmd_yawrate=%f",
+					target_yaw, pos_error.x(), pos_error.y(), yaw_error, dt, control_vel_x, control_yawrate);
 
 	return true;
 }
@@ -256,12 +284,30 @@ bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& pla
 {
 	m_global_plan = plan;
 	m_state = state_t::STATE_IDLE;
+	m_last_time = ros::WallTime::now();
 }
 
 void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, costmap_2d::Costmap2DROS* costmap_ros)
 {
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~/" + name);
+
+	m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 0.5);
+	m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 0.5);
+	m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 0.5);
+	m_limits.acc_limit_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
+	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
+	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
+	m_limits.min_vel_y = 			private_nh.param<double>("min_vel_y", -0.5);
+	m_limits.max_vel_y = 			private_nh.param<double>("max_vel_y", 0.5);
+	m_limits.min_rot_vel = 			private_nh.param<double>("min_rot_vel", 0.1);
+	m_limits.max_rot_vel = 			private_nh.param<double>("max_rot_vel", 0.5);
+	m_limits.min_trans_vel = 		private_nh.param<double>("min_trans_vel", 0.1);
+	m_limits.max_trans_vel = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
+	m_limits.rot_stopped_vel = 		private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_rot_vel);
+	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_trans_vel);
+	m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
+	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.05);
 
 	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
 	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
@@ -271,17 +317,6 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
 	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
 	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
-
-	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
-	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
-	m_limits.min_rot_vel = 			private_nh.param<double>("min_rot_vel", 0.1);
-	m_limits.max_rot_vel = 			private_nh.param<double>("max_rot_vel", 0.5);
-	m_limits.min_trans_vel = 		private_nh.param<double>("min_trans_vel", 0.1);
-	m_limits.max_trans_vel = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
-	m_limits.rot_stopped_vel = 		private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_rot_vel);
-	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_trans_vel);
-	m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
-	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.05);
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;

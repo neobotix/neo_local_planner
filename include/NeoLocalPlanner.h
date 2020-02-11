@@ -69,6 +69,8 @@ private:
 
 	state_t m_state = state_t::STATE_IDLE;
 
+	ros::WallTime m_last_time;
+
 	base_local_planner::LocalPlannerLimits m_limits = {};
 
 };
