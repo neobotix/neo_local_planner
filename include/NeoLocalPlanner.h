@@ -55,10 +55,14 @@ private:
 	double m_max_y_error = 0;			// [m]
 	double m_max_yaw_error = 0;			// [rad]
 	double m_pos_x_gain = 0;			// [1/s]
-	double m_pos_y_gain = 0;			// [rad/s^2]
+	double m_pos_y_gain = 0;			// [1/s]
+	double m_pos_y_yaw_gain = 0;		// [rad/s^2]
 	double m_yaw_gain = 0;				// [1/s]
 	double m_static_yaw_gain = 0;		// [1/s]
 	double m_max_curve_vel = 0;			// [m*rad/s^2]
+	double m_max_backup_dist = 0;		// [m]
+
+	bool m_differential_drive = false;
 
 	enum state_t {
 		STATE_IDLE,
