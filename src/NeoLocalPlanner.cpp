@@ -171,7 +171,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	double control_vel_x = 0;
 	double control_vel_y = 0;
 	double control_yawrate = 0;
-	bool do_turn_around = false;
 
 	if(is_goal_target)
 	{
@@ -179,10 +178,11 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		control_vel_x = pos_error.x() * m_pos_x_gain;
 
 		// limit backing up
-		if(m_max_backup_dist > 0 && pos_error.x() < -1 * m_max_backup_dist)
+		if(m_max_backup_dist > 0 && pos_error.x() < (m_state == state_t::STATE_TURNING ?
+														-0.5 * m_max_backup_dist : -1 * m_max_backup_dist))
 		{
 			control_vel_x = 0;
-			do_turn_around = true;
+			m_state = state_t::STATE_TURNING;
 		}
 	}
 	else
@@ -217,12 +217,10 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 			m_state = state_t::STATE_ADJUSTING;
 		}
-		else if(do_turn_around)
+		else if(m_state == state_t::STATE_TURNING)
 		{
 			// continue on current yawrate
 			control_yawrate = (start_yawrate > 0 ? 1 : -1) * m_limits.max_rot_vel;
-
-			m_state = state_t::STATE_ROTATING;
 		}
 		else
 		{
@@ -237,13 +235,21 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		// simply correct y with holonomic drive
 		control_vel_y = pos_error.y() * m_pos_y_gain;
 
-		// use term for static target orientation
-		control_yawrate = yaw_error * m_static_yaw_gain;
+		if(m_state == state_t::STATE_TURNING)
+		{
+			// continue on current yawrate
+			control_yawrate = (start_yawrate > 0 ? 1 : -1) * m_limits.max_rot_vel;
+		}
+		else
+		{
+			// use term for static target orientation
+			control_yawrate = yaw_error * m_static_yaw_gain;
 
-		if(fabs(start_vel_x) > m_limits.trans_stopped_vel) {
-			m_state = state_t::STATE_TRANSLATING;
-		} else {
-			m_state = state_t::STATE_ROTATING;
+			if(fabs(start_vel_x) > m_limits.trans_stopped_vel) {
+				m_state = state_t::STATE_TRANSLATING;
+			} else {
+				m_state = state_t::STATE_ROTATING;
+			}
 		}
 	}
 
@@ -285,8 +291,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.angular.y = 0;
 	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 
-	ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, do_turn=%d, cmd_vel=%f, cmd_yawrate=%f",
-					dt, target_yaw, pos_error.x(), pos_error.y(), yaw_error, do_turn_around, control_vel_x, control_yawrate);
+	ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, state=%d, cmd_vel=%f, cmd_yawrate=%f",
+					dt, target_yaw, pos_error.x(), pos_error.y(), yaw_error, m_state, control_vel_x, control_yawrate);
 
 	return true;
 }
