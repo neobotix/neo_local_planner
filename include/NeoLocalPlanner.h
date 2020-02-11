@@ -55,8 +55,19 @@ private:
 	double m_max_y_error = 0.2;			// [m]
 	double m_max_yaw_error = 0.5;		// [rad]
 	double m_pos_x_gain = 1;			// [1/s]
-	double m_pos_y_gain = 10;			// [rad/s^2]
-	double m_yaw_gain = 10;				// [1/s]
+	double m_pos_y_gain = 1;			// [rad/s^2]
+	double m_yaw_gain = 1;				// [1/s]
+	double m_static_yaw_gain = 3;		// [1/s]
+
+	enum state_t {
+		STATE_IDLE,
+		STATE_TRANSLATING,
+		STATE_ROTATING,
+		STATE_ADJUSTING,
+		STATE_GOAL_REACHED
+	};
+
+	state_t m_state = state_t::STATE_IDLE;
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 

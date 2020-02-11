@@ -127,30 +127,37 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// check if goal target
 	bool is_goal_target = iter_target + 1 >= local_plan.cend();
 
-	// if target is not goal, compute path based target orientation
+	// figure out target orientation
 	double target_yaw = 0;
 
 	if(!is_goal_target)
 	{
+		// compute path based target orientation
 		auto iter_next = move_along_path(iter_target, local_plan.cend(), m_lookahead_dist);
 		target_yaw = ::atan2(	iter_next->getOrigin().y() - iter_target->getOrigin().y(),
 								iter_next->getOrigin().x() - iter_target->getOrigin().x());
 
-		// reset target and re-check if goal now
-		iter_target = iter_next;
-		is_goal_target = iter_target + 1 >= local_plan.cend();
+		// re-check if goal
+		is_goal_target = iter_next + 1 >= local_plan.cend();
+
+		if(is_goal_target)
+		{
+			// go straight to goal
+			iter_target = iter_next;
+		}
 	}
 
-	// compute target position and orientation
-	const tf::Vector3 target_pos = iter_target->getOrigin();
-
-	if(is_goal_target) {
+	if(is_goal_target)
+	{
+		// take goal orientation
 		target_yaw = tf::getYaw(iter_target->getRotation());
 	}
 
+	// get target position
+	const tf::Vector3 target_pos = iter_target->getOrigin();
+
 	// compute errors
 	const double yaw_error = angles::shortest_angular_distance(actual_yaw, target_yaw);
-	const double xy_error = (local_pose.getOrigin() - iter_target->getOrigin()).length();
 	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
 
 	// compute control values
@@ -170,37 +177,35 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		control_vel = m_limits.max_trans_vel * fmax(fmin(pow(y_factor, 0.5), pow(yaw_factor, 0.5)), 0);
 	}
 
-	if(fabs(start_vel) > m_limits.trans_stopped_vel)
+	if(fabs(start_vel) > (m_state == state_t::STATE_TRANSLATING ?
+							m_limits.trans_stopped_vel : 2 * m_limits.trans_stopped_vel))
 	{
 		// we are translating, use term for lane keeping
 		control_yawrate = pos_error.y() / start_vel * m_pos_y_gain;
+
+		if(!is_goal_target)
+		{
+			// additional term for lane keeping
+			control_yawrate += yaw_error * m_yaw_gain;
+		}
+
+		m_state = state_t::STATE_TRANSLATING;
 	}
-	else if(is_goal_target && xy_error > m_limits.xy_goal_tolerance)
+	else if(is_goal_target && fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
+											0.35 * m_limits.xy_goal_tolerance : 0.7 * m_limits.xy_goal_tolerance))
 	{
 		// we are not translating but goal not reached either, use term for static y error
 		control_yawrate = (pos_error.y() > 0 ? 1 : -1) * m_limits.max_rot_vel;
+
+		m_state = state_t::STATE_ADJUSTING;
 	}
 	else
 	{
-		// use term for target orientation
-		control_yawrate = yaw_error * m_yaw_gain;
+		// use term for static target orientation
+		control_yawrate = yaw_error * m_static_yaw_gain;
+
+		m_state = state_t::STATE_ROTATING;
 	}
-
-	// ensure minimum translational velocity
-	// if(control_vel > 0) {
-	// 	control_vel = fmax(control_vel, m_limits.min_trans_vel);
-	// }
-	// if(control_vel < 0) {
-	// 	control_vel = fmin(control_vel, -1 * m_limits.min_trans_vel);
-	// }
-
-	// ensure minimum rotational velocity
-	// if(control_yawrate > 0) {
-	// 	control_yawrate = fmax(control_yawrate, m_limits.min_rot_vel);
-	// }
-	// if(control_yawrate < 0) {
-	// 	control_yawrate = fmin(control_yawrate, -1 * m_limits.min_rot_vel);
-	// }
 
 	cmd_vel.linear.x = fmin(fmax(control_vel, m_limits.min_vel_x), m_limits.max_vel_x);
 	cmd_vel.linear.y = 0;
@@ -260,6 +265,7 @@ bool NeoLocalPlanner::isGoalReached()
 bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& plan)
 {
 	m_global_plan = plan;
+	m_state = state_t::STATE_IDLE;
 }
 
 void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, costmap_2d::Costmap2DROS* costmap_ros)
