@@ -338,6 +338,7 @@ bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& pla
 	m_global_plan = plan;
 	m_state = state_t::STATE_IDLE;
 	m_last_time = ros::WallTime::now();
+	m_last_cmd_vel = geometry_msgs::Twist();
 }
 
 void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, costmap_2d::Costmap2DROS* costmap_ros)
