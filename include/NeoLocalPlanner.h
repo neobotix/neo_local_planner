@@ -59,7 +59,8 @@ private:
 	double m_pos_y_yaw_gain = 0;		// [rad/s^2]
 	double m_yaw_gain = 0;				// [1/s]
 	double m_static_yaw_gain = 0;		// [1/s]
-	double m_max_curve_vel = 0;			// [m*rad/s^2]
+	double m_max_curve_vel = 0;			// [rad/s]
+	double m_max_goal_dist = 0;			// [m]
 	double m_max_backup_dist = 0;		// [m]
 
 	bool m_differential_drive = false;
@@ -76,6 +77,7 @@ private:
 	state_t m_state = state_t::STATE_IDLE;
 
 	ros::WallTime m_last_time;
+	geometry_msgs::Twist m_last_cmd_vel;
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 

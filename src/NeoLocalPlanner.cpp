@@ -88,7 +88,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// compute delta time
 	const ros::WallTime time_now = ros::WallTime::now();
 	const double dt = fmax(fmin((time_now - m_last_time).toSec(), 0.1), 0);
-	m_last_time = time_now;
 
 	// get latest global to local transform (map to odom)
 	tf::StampedTransform global_to_local;
@@ -131,19 +130,11 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	auto iter_target = find_closest_point(local_plan.cbegin(), local_plan.cend(), actual_pos);
 
 	// check if goal target
-	bool is_goal_target = iter_target + 1 >= local_plan.cend();
+	bool is_goal_target = false;
 
-	// figure out target orientation
-	double target_yaw = 0;
-
-	if(!is_goal_target)
 	{
-		// compute path based target orientation
-		auto iter_next = move_along_path(iter_target, local_plan.cend(), m_lookahead_dist);
-		target_yaw = ::atan2(	iter_next->getOrigin().y() - iter_target->getOrigin().y(),
-								iter_next->getOrigin().x() - iter_target->getOrigin().x());
-
-		// re-check if goal
+		// check if goal is within reach
+		auto iter_next = move_along_path(iter_target, local_plan.cend(), m_max_goal_dist);
 		is_goal_target = iter_next + 1 >= local_plan.cend();
 
 		if(is_goal_target)
@@ -153,17 +144,27 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 	}
 
+	// figure out target orientation
+	double target_yaw = 0;
+
 	if(is_goal_target)
 	{
 		// take goal orientation
 		target_yaw = tf::getYaw(iter_target->getRotation());
+	}
+	else
+	{
+		// compute path based target orientation
+		auto iter_next = move_along_path(iter_target, local_plan.cend(), m_lookahead_dist);
+		target_yaw = ::atan2(	iter_next->getOrigin().y() - iter_target->getOrigin().y(),
+								iter_next->getOrigin().x() - iter_target->getOrigin().x());
 	}
 
 	// get target position
 	const tf::Vector3 target_pos = iter_target->getOrigin();
 
 	// compute errors
-	const double goal_dist = (local_plan.back().getOrigin() - local_pose.getOrigin()).length();
+	const double goal_dist = (local_plan.back().getOrigin() - actual_pos).length();
 	const double yaw_error = angles::shortest_angular_distance(actual_yaw, target_yaw);
 	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
 
@@ -188,9 +189,13 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	else
 	{
 		// use term for lane keeping
-		const double y_factor = fmax(1 - fabs(pos_error.y()) / m_max_y_error, 0);
-		const double yaw_factor = fmax(1 - fabs(yaw_error) / m_max_yaw_error, 0);
-		control_vel_x = m_limits.max_trans_vel * fmax(fmin(y_factor, yaw_factor), 0);
+		const double y_term = fmax((1 - fabs(pos_error.y()) / m_max_y_error) * m_limits.max_trans_vel, m_limits.min_trans_vel);
+		const double yaw_term = fmax((1 - fabs(yaw_error) / m_max_yaw_error) * m_limits.max_trans_vel, 0);
+		control_vel_x = fmax(fmin(y_term, yaw_term), 0);
+
+		// limit curve velocity
+		const double max_vel_x = m_max_curve_vel * (m_lookahead_dist / fabs(yaw_error));
+		control_vel_x = fmin(control_vel_x, max_vel_x);
 	}
 
 	if(m_differential_drive)
@@ -209,10 +214,10 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 			m_state = state_t::STATE_TRANSLATING;
 		}
-		else if(fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
+		else if(is_goal_target && fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
 										0.35 * m_limits.xy_goal_tolerance : 0.7 * m_limits.xy_goal_tolerance))
 		{
-			// we are not translating, use term for static y error
+			// we are not translating, we are yaw aligned to less than 45 deg, but we have too large y error
 			control_yawrate = (pos_error.y() > 0 ? 1 : -1) * m_limits.max_rot_vel;
 
 			m_state = state_t::STATE_ADJUSTING;
@@ -253,16 +258,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 	}
 
-	// limit curve velocity
-	if(control_vel_x > 0) {
-		control_vel_x = fmin(control_vel_x, m_max_curve_vel / fabs(control_yawrate));
-	} else {
-		control_vel_x = fmax(control_vel_x, -1 * m_max_curve_vel / fabs(control_yawrate));
-	}
-
-	// apply acceleration limits
-	control_vel_x = fmin(control_vel_x, start_vel_x + m_limits.acc_lim_x * dt);
-
 	if(control_vel_x > 0 && start_vel_x > 0)
 	{
 		// limit velocity when approaching goal position
@@ -270,18 +265,14 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		control_vel_x = fmin(control_vel_x, max_vel_x);
 	}
 
-	// limit yaw acceleration in certain states
-	switch(m_state)
-	{
-		case state_t::STATE_ADJUSTING:
-		case state_t::STATE_ROTATING:
-			if(control_yawrate > 0) {
-				control_yawrate = fmin(control_yawrate, start_yawrate + m_limits.acc_lim_theta * dt);
-			} else {
-				control_yawrate = fmax(control_yawrate, start_yawrate - m_limits.acc_lim_theta * dt);
-			}
-			break;
-	}
+	// apply acceleration limits
+	control_vel_x = fmax(fmin(control_vel_x, m_last_cmd_vel.linear.x + m_limits.acc_lim_x * dt),
+								m_last_cmd_vel.linear.x - m_limits.acc_lim_x * dt);
+	control_vel_y = fmax(fmin(control_vel_y, m_last_cmd_vel.linear.y + m_limits.acc_lim_y * dt),
+								m_last_cmd_vel.linear.y - m_limits.acc_lim_y * dt);
+
+	control_yawrate = fmax(fmin(control_yawrate, m_last_cmd_vel.angular.z + m_limits.acc_lim_theta * dt),
+									m_last_cmd_vel.angular.z - m_limits.acc_lim_theta * dt);
 
 	// fill return data
 	cmd_vel.linear.x = fmin(fmax(control_vel_x, m_limits.min_vel_x), m_limits.max_vel_x);
@@ -293,6 +284,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 	ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, target_yaw=%f, pos_error=(%f, %f), yaw_error=%f, state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
 					dt, target_yaw, pos_error.x(), pos_error.y(), yaw_error, m_state, control_vel_x, control_vel_y, control_yawrate);
+
+	m_last_time = time_now;
+	m_last_cmd_vel = cmd_vel;
 
 	return true;
 }
@@ -351,9 +345,9 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~/" + name);
 
-	m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 0.5);
-	m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 0.5);
-	m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 0.5);
+	m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 1);
+	m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 1);
+	m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 1);
 	m_limits.acc_limit_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
 	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
 	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
@@ -377,7 +371,8 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_pos_y_yaw_gain = 		private_nh.param<double>("pos_y_yaw_gain", 1);
 	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
 	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
-	m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", m_limits.min_trans_vel * m_limits.max_rot_vel);
+	m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", 0.2);
+	m_max_goal_dist = 		private_nh.param<double>("max_goal_dist", 0.2);
 	m_max_backup_dist = 	private_nh.param<double>("max_backup_dist", 0.1);
 	m_differential_drive = 	private_nh.param<bool>("differential_drive", true);
 
