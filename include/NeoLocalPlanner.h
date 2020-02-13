@@ -59,9 +59,15 @@ private:
 	double m_pos_y_yaw_gain = 0;		// [rad/s^2]
 	double m_yaw_gain = 0;				// [1/s]
 	double m_static_yaw_gain = 0;		// [1/s]
+	double m_cost_x_gain = 0;
+	double m_cost_y_gain = 0;
+	double m_cost_y_yaw_gain = 0;
+	double m_cost_yaw_gain = 0;
 	double m_max_curve_vel = 0;			// [rad/s]
 	double m_max_goal_dist = 0;			// [m]
 	double m_max_backup_dist = 0;		// [m]
+	double m_max_cost = 0;				// [1]
+	double m_min_stop_dist = 0;			// [m]
 
 	bool m_differential_drive = false;
 
@@ -71,7 +77,8 @@ private:
 		STATE_ROTATING,
 		STATE_ADJUSTING,
 		STATE_TURNING,
-		STATE_GOAL_REACHED
+		STATE_BLOCKED,
+		STATE_STUCK
 	};
 
 	state_t m_state = state_t::STATE_IDLE;
