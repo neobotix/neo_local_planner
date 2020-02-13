@@ -52,7 +52,6 @@ private:
 
 	double m_lookahead_time = 0;		// [s]
 	double m_lookahead_dist = 0;		// [m]
-	double m_max_y_error = 0;			// [m]
 	double m_max_yaw_error = 0;			// [rad]
 	double m_pos_x_gain = 0;			// [1/s]
 	double m_pos_y_gain = 0;			// [1/s]
@@ -63,6 +62,7 @@ private:
 	double m_cost_y_gain = 0;
 	double m_cost_y_yaw_gain = 0;
 	double m_cost_yaw_gain = 0;
+	double m_low_pass_gain = 0;
 	double m_max_curve_vel = 0;			// [rad/s]
 	double m_max_goal_dist = 0;			// [m]
 	double m_max_backup_dist = 0;		// [m]
@@ -77,13 +77,13 @@ private:
 		STATE_ROTATING,
 		STATE_ADJUSTING,
 		STATE_TURNING,
-		STATE_BLOCKED,
 		STATE_STUCK
 	};
 
 	state_t m_state = state_t::STATE_IDLE;
 
 	ros::WallTime m_last_time;
+	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
 
 	base_local_planner::LocalPlannerLimits m_limits = {};

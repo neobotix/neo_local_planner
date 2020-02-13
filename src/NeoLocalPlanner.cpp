@@ -167,8 +167,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const tf::Pose actual_pose = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos);
 
 	// compute cost gradients
-	const double delta_x = 0.2;
-	const double delta_y = 0.1;
+	const double delta_x = 0.3;
+	const double delta_y = 0.2;
 	const double delta_yaw = 0.1;
 
 	const double center_cost = get_cost(m_cost_map, actual_pos);
@@ -196,7 +196,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		/ (2 * delta_yaw);
 
 	// compute situational max velocities
-	const double max_trans_vel = fmax(m_limits.max_trans_vel * (m_max_cost - future_cost) / m_max_cost, m_limits.min_trans_vel);
+	const double max_trans_vel = fmax(m_limits.max_trans_vel * (m_max_cost - center_cost) / m_max_cost, m_limits.min_trans_vel);
 	const double max_rot_vel = fmax(m_limits.max_rot_vel * (m_max_cost - center_cost) / m_max_cost, m_limits.min_rot_vel);
 
 	// find closest point on path to future position
@@ -242,6 +242,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
 
 	// compute control values
+	bool is_blocked = false;
 	double control_vel_x = 0;
 	double control_vel_y = 0;
 	double control_yawrate = 0;
@@ -284,11 +285,18 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			control_vel_x = fmax(fmin(control_vel_x, max_vel_x), 0);
 		}
 
+		// limit velocity when approaching goal position
+		if(start_vel_x > 0)
+		{
+			const double max_vel_x = goal_dist / start_vel_x * m_limits.acc_lim_x;
+			control_vel_x = fmin(control_vel_x, max_vel_x);
+		}
+
 		// stop when cost too high and increasing in x direction
 		if(future_cost > m_max_cost && delta_cost_x > 0)
 		{
 			control_vel_x = 0;
-			m_state = state_t::STATE_BLOCKED;
+			is_blocked = true;
 		}
 	}
 
@@ -327,13 +335,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 		else
 		{
-			if(m_state == state_t::STATE_BLOCKED && fabs(yaw_error) < m_limits.yaw_goal_tolerance)
-			{
-				// we are stuck
-				m_state = state_t::STATE_STUCK;
-				return false;
-			}
-
 			// use term for static target orientation
 			control_yawrate = yaw_error * m_static_yaw_gain;
 
@@ -363,12 +364,12 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 
 		// apply cost terms
-		if(m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 4)
+		if(m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 6)
 		{
 			control_vel_x -= delta_cost_x * m_cost_x_gain;
 		}
 
-		if(!is_goal_target || (m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 4))
+		if(!is_goal_target || (m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 6))
 		{
 			control_vel_y -= delta_cost_y * m_cost_y_gain;
 		}
@@ -379,12 +380,17 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 	}
 
-	if(control_vel_x > 0 && start_vel_x > 0)
+	if(is_blocked && m_state == state_t::STATE_ROTATING && fabs(yaw_error) < M_PI / 6)
 	{
-		// limit velocity when approaching goal position
-		const double max_vel_x = goal_dist / start_vel_x * m_limits.acc_lim_x;
-		control_vel_x = fmin(control_vel_x, max_vel_x);
+		// we are stuck
+		m_state = state_t::STATE_STUCK;
+		return false;
 	}
+
+	// apply low pass filter
+	control_vel_x = control_vel_x * m_low_pass_gain + m_last_control_values[0] * (1 - m_low_pass_gain);
+	control_vel_y = control_vel_y * m_low_pass_gain + m_last_control_values[1] * (1 - m_low_pass_gain);
+	control_yawrate = control_yawrate * m_low_pass_gain + m_last_control_values[2] * (1 - m_low_pass_gain);
 
 	// apply acceleration limits
 	control_vel_x = fmax(fmin(control_vel_x, m_last_cmd_vel.linear.x + m_limits.acc_lim_x * dt),
@@ -407,6 +413,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 					dt, pos_error.x(), pos_error.y(), yaw_error, center_cost, stopping_dist, future_cost, delta_cost_x, delta_cost_y, delta_cost_yaw, m_state, control_vel_x, control_vel_y, control_yawrate);
 
 	m_last_time = time_now;
+	m_last_control_values[0] = control_vel_x;
+	m_last_control_values[1] = control_vel_y;
+	m_last_control_values[2] = control_yawrate;
 	m_last_cmd_vel = cmd_vel;
 
 	return true;
@@ -459,8 +468,10 @@ bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& pla
 	m_global_plan = plan;
 	m_state = state_t::STATE_IDLE;
 	m_last_time = ros::WallTime::now();
+	m_last_control_values[0] = 0;
+	m_last_control_values[1] = 0;
+	m_last_control_values[2] = 0;
 	m_last_cmd_vel = geometry_msgs::Twist();
-
 	return true;
 }
 
@@ -488,17 +499,17 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 
 	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
 	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
-	m_max_y_error = 		private_nh.param<double>("max_y_error", 0.2);
 	m_max_yaw_error = 		private_nh.param<double>("max_yaw_error", 0.5);
 	m_pos_x_gain = 			private_nh.param<double>("pos_x_gain", 1);
 	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
 	m_pos_y_yaw_gain = 		private_nh.param<double>("pos_y_yaw_gain", 1);
 	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
 	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
-	m_cost_x_gain = 		private_nh.param<double>("cost_x_gain", 1);
-	m_cost_y_gain = 		private_nh.param<double>("cost_y_gain", 1);
+	m_cost_x_gain = 		private_nh.param<double>("cost_x_gain", 0.1);
+	m_cost_y_gain = 		private_nh.param<double>("cost_y_gain", 0.1);
 	m_cost_y_yaw_gain = 	private_nh.param<double>("cost_y_yaw_gain", 0.1);
 	m_cost_yaw_gain = 		private_nh.param<double>("cost_yaw_gain", 1);
+	m_low_pass_gain = 		private_nh.param<double>("low_pass_gain", 0.5);
 	m_max_cost = 			private_nh.param<double>("max_cost", 0.9);
 	m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", 0.2);
 	m_max_goal_dist = 		private_nh.param<double>("max_goal_dist", 0.2);
