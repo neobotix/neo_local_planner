@@ -52,7 +52,7 @@ private:
 
 	double m_lookahead_time = 0;		// [s]
 	double m_lookahead_dist = 0;		// [m]
-	double m_max_yaw_error = 0;			// [rad]
+	double m_start_yaw_error = 0;		// [rad]
 	double m_pos_x_gain = 0;			// [1/s]
 	double m_pos_y_gain = 0;			// [1/s]
 	double m_pos_y_yaw_gain = 0;		// [rad/s^2]

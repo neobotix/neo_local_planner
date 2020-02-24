@@ -251,38 +251,21 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	{
 		// use term for final stopping position
 		control_vel_x = pos_error.x() * m_pos_x_gain;
-
-		// limit backing up
-		if(m_max_backup_dist > 0 && pos_error.x() < (m_state == state_t::STATE_TURNING ? 0 : -1 * m_max_backup_dist))
-		{
-			control_vel_x = 0;
-			m_state = state_t::STATE_TURNING;
-		}
-		else if(m_state == state_t::STATE_TURNING)
-		{
-			m_state = state_t::STATE_IDLE;
-		}
 	}
 	else
 	{
 		control_vel_x = max_trans_vel;
 
 		// wait to start moving
-		if(m_differential_drive && m_state != state_t::STATE_TRANSLATING && fabs(yaw_error) > 0.2)
+		if(m_state != state_t::STATE_TRANSLATING && fabs(yaw_error) > m_start_yaw_error)
 		{
 			control_vel_x = 0;
-		}
-
-		// apply lane keeping limits
-		{
-			const double yaw_term = fmax(1 - fabs(yaw_error) / m_max_yaw_error, 0);
-			control_vel_x = fmin(control_vel_x, pow(yaw_term, 2) * m_limits.max_trans_vel);
 		}
 
 		// limit curve velocity
 		{
 			const double max_vel_x = m_max_curve_vel * (lookahead_dist / fabs(yaw_error));
-			control_vel_x = fmax(fmin(control_vel_x, max_vel_x), 0);
+			control_vel_x = fmin(control_vel_x, max_vel_x);
 		}
 
 		// limit velocity when approaching goal position
@@ -298,6 +281,21 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			control_vel_x = 0;
 			is_blocked = true;
 		}
+
+		// only allow forward velocity in this branch
+		control_vel_x = fmax(control_vel_x, 0);
+	}
+
+	// limit backing up
+	if(is_goal_target && m_max_backup_dist > 0
+		&& pos_error.x() < (m_state == state_t::STATE_TURNING ? 0 : -1 * m_max_backup_dist))
+	{
+		control_vel_x = 0;
+		m_state = state_t::STATE_TURNING;
+	}
+	else if(m_state == state_t::STATE_TURNING)
+	{
+		m_state = state_t::STATE_IDLE;
 	}
 
 	if(m_differential_drive)
@@ -499,7 +497,7 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 
 	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
 	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
-	m_max_yaw_error = 		private_nh.param<double>("max_yaw_error", 0.5);
+	m_start_yaw_error = 	private_nh.param<double>("start_yaw_error", 0.2);
 	m_pos_x_gain = 			private_nh.param<double>("pos_x_gain", 1);
 	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
 	m_pos_y_yaw_gain = 		private_nh.param<double>("pos_y_yaw_gain", 1);
