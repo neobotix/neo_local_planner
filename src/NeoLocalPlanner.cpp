@@ -275,6 +275,13 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			control_vel_x = fmin(control_vel_x, max_vel_x);
 		}
 
+		// limit velocity when approaching a stop
+		if(start_vel_x > 0 && future_cost > m_max_cost)
+		{
+			const double max_vel_x = stopping_dist / start_vel_x * m_limits.acc_lim_x;
+			control_vel_x = fmin(control_vel_x, max_vel_x);
+		}
+
 		// stop when cost too high and increasing in x direction
 		if(future_cost > m_max_cost && delta_cost_x > 0)
 		{
