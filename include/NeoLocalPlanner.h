@@ -50,6 +50,9 @@ private:
 	std::string m_local_frame = "odom";
 	std::string m_base_frame = "base_link";
 
+	base_local_planner::LocalPlannerLimits m_limits = {};
+
+	double m_goal_tune_time = 0;		// [s]
 	double m_lookahead_time = 0;		// [s]
 	double m_lookahead_dist = 0;		// [m]
 	double m_start_yaw_error = 0;		// [rad]
@@ -86,10 +89,11 @@ private:
 	state_t m_state = state_t::STATE_IDLE;
 
 	ros::WallTime m_last_time;
+	ros::WallTime m_first_goal_reached_time;
+
+	bool m_is_goal_reached = false;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
-
-	base_local_planner::LocalPlannerLimits m_limits = {};
 
 };
 

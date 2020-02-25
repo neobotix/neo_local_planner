@@ -528,9 +528,17 @@ bool NeoLocalPlanner::isGoalReached()
 	const double yaw_error = fabs(angles::shortest_angular_distance(tf::getYaw(m_odometry->pose.pose.orientation),
 																	tf::getYaw(goal_pose_local.getRotation())));
 
-	ROS_DEBUG_NAMED("NeoLocalPlanner", "is_stopped=%d, xy_error=%f [m], yaw_error=%f [rad]", is_stopped, xy_error, yaw_error);
+	const bool is_reached = is_stopped && xy_error < m_limits.xy_goal_tolerance && yaw_error < m_limits.yaw_goal_tolerance;
 
-	return is_stopped && xy_error < m_limits.xy_goal_tolerance && yaw_error < m_limits.yaw_goal_tolerance;
+	if(!m_is_goal_reached) {
+		m_first_goal_reached_time = ros::WallTime::now();
+	}
+	m_is_goal_reached = is_reached;
+
+	ROS_DEBUG_NAMED("NeoLocalPlanner", "is_stopped=%d, is_reached=%d, xy_error=%f [m], yaw_error=%f [rad]",
+					is_stopped, is_reached, xy_error, yaw_error);
+
+	return is_reached && (ros::WallTime::now() - m_first_goal_reached_time).toSec() >= m_goal_tune_time;
 }
 
 bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& plan)
@@ -538,6 +546,8 @@ bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& pla
 	m_global_plan = plan;
 	m_state = state_t::STATE_IDLE;
 	m_last_time = ros::WallTime::now();
+	m_first_goal_reached_time = ros::WallTime();
+	m_is_goal_reached = false;
 	m_last_control_values[0] = 0;
 	m_last_control_values[1] = 0;
 	m_last_control_values[2] = 0;
@@ -568,6 +578,7 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.1);
 
 	m_differential_drive = 	private_nh.param<bool>("differential_drive", true);
+	m_goal_tune_time = 		private_nh.param<double>("goal_tune_time", 0.5);
 	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
 	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
 	m_start_yaw_error = 	private_nh.param<double>("start_yaw_error", 0.2);
