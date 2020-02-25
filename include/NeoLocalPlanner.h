@@ -61,6 +61,8 @@ private:
 	double m_cost_x_gain = 0;
 	double m_cost_y_gain = 0;
 	double m_cost_y_yaw_gain = 0;
+	double m_cost_y_lookahead_dist = 0;	// [m]
+	double m_cost_y_lookahead_time = 0;	// [s]
 	double m_cost_yaw_gain = 0;
 	double m_low_pass_gain = 0;
 	double m_max_curve_vel = 0;			// [rad/s]
@@ -68,6 +70,7 @@ private:
 	double m_max_backup_dist = 0;		// [m]
 	double m_max_cost = 0;				// [1]
 	double m_min_stop_dist = 0;			// [m]
+	double m_emergency_acc_lim_x = 0;	// [m/s^2]
 
 	bool m_differential_drive = false;
 
