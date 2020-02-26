@@ -425,17 +425,19 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			}
 		}
 
-		// apply cost terms
+		// apply x cost term only when rotating
 		if(m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 6)
 		{
 			control_vel_x -= delta_cost_x * m_cost_x_gain;
 		}
 
+		// apply y cost term when not approaching goal or if we are rotating
 		if(!is_goal_target || (m_state == state_t::STATE_ROTATING && fabs(yaw_error) > M_PI / 6))
 		{
 			control_vel_y -= delta_cost_y * m_cost_y_gain;
 		}
 
+		// apply yaw cost term when not approaching goal
 		if(!is_goal_target)
 		{
 			control_yawrate -= delta_cost_yaw * m_cost_yaw_gain;
