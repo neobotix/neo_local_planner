@@ -212,6 +212,11 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 												actual_pose * (tf::Matrix3x3(tf::createQuaternionFromYaw(-delta_yaw)) * tf::Vector3(-delta_x, 0, 0)))
 		)) / (2 * delta_yaw);
 
+	// fill local plan later
+	nav_msgs::Path::Ptr local_path = boost::make_shared<nav_msgs::Path>();
+	local_path->header.frame_id = m_local_frame;
+	local_path->header.stamp = m_odometry->header.stamp;
+
 	// compute obstacle distance
 	bool have_obstacle = false;
 	double obstacle_dist = 0;
@@ -236,6 +241,12 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			have_obstacle = cost >= m_max_cost;
 			obstacle_cost = fmax(obstacle_cost, cost);
 
+			{
+				geometry_msgs::PoseStamped tmp;
+				tf::poseStampedTFToMsg(tf::Stamped<tf::Pose>(pose, m_odometry->header.stamp, m_local_frame), tmp);
+				local_path->poses.push_back(tmp);
+			}
+
 			if(!is_contained || have_obstacle) {
 				break;
 			}
@@ -247,6 +258,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		}
 	}
 	obstacle_dist -= m_min_stop_dist;
+
+	// publish local plan
+	m_local_plan_pub.publish(local_path);
 
 	// compute situational max velocities
 	const double max_trans_vel = fmax(m_limits.max_trans_vel * (m_max_cost - center_cost) / m_max_cost, m_limits.min_trans_vel);
