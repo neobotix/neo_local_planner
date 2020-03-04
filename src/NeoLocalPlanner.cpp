@@ -344,7 +344,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		// limit velocity when approaching an obstacle
 		if(have_obstacle && start_vel_x > 0)
 		{
-			const double max_vel_x = fmax(obstacle_dist, 0) / start_vel_x * m_limits.acc_lim_x;
+			const double stop_accel = 0.9 * m_limits.acc_lim_x;
+			const double stop_time = sqrt(2 * fmax(obstacle_dist, 0) / stop_accel);
+			const double max_vel_x = stop_accel * stop_time;
 
 			// check if it's much lower than current velocity
 			if(max_vel_x < 0.5 * start_vel_x) {
