@@ -406,7 +406,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			// continue on current yawrate
 			control_yawrate = (start_yawrate > 0 ? 1 : -1) * max_rot_vel;
 		}
-		else if(is_goal_target && fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
+		else if(is_goal_target
+				&& (m_state == state_t::STATE_ADJUSTING || fabs(yaw_error) < M_PI / 6)
+				&& fabs(pos_error.y()) > (m_state == state_t::STATE_ADJUSTING ?
 					0.25 * m_limits.xy_goal_tolerance : 0.5 * m_limits.xy_goal_tolerance))
 		{
 			// we are not translating, but we have too large y error
