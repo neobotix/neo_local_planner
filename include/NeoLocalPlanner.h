@@ -125,6 +125,7 @@ private:
 	ros::WallTime m_first_goal_reached_time;
 
 	bool m_is_goal_reached = false;
+	uint64_t m_update_counter = 0;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
 
