@@ -553,7 +553,11 @@ bool NeoLocalPlanner::isGoalReached()
 
 	const bool is_reached = is_stopped && xy_error < m_limits.xy_goal_tolerance && yaw_error < m_limits.yaw_goal_tolerance;
 
-	if(!m_is_goal_reached) {
+	if(!m_is_goal_reached)
+	{
+		if(is_reached) {
+			ROS_INFO_STREAM("Goal reached: xy_error=" << xy_error << " [m], yaw_error=" << yaw_error << " [rad]");
+		}
 		m_first_goal_reached_time = ros::WallTime::now();
 	}
 	m_is_goal_reached = is_reached;
