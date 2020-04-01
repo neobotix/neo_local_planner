@@ -35,7 +35,7 @@
 #ifndef INCLUDE_NEOLOCALPLANNER_H_
 #define INCLUDE_NEOLOCALPLANNER_H_
 
-#include <tf/transform_listener.h>
+#include <tf2_ros/buffer.h>
 #include <dynamic_reconfigure/server.h>
 #include <angles/angles.h>
 #include <nav_msgs/Odometry.h>
@@ -63,13 +63,13 @@ public:
 
 	bool setPlan(const std::vector<geometry_msgs::PoseStamped>& plan) override;
 
-	void initialize(std::string name, tf::TransformListener* tf, costmap_2d::Costmap2DROS* costmap_ros) override;
+	void initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros) override;
 
 private:
 	void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
 private:
-	tf::TransformListener* m_tf = 0;
+	tf2_ros::Buffer* m_tf = 0;
 	costmap_2d::Costmap2DROS* m_cost_map = 0;
 	std::vector<geometry_msgs::PoseStamped> m_global_plan;
 

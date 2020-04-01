@@ -34,6 +34,7 @@
 
 #include "../include/NeoLocalPlanner.h"
 
+#include <tf2/convert.h>
 #include <tf/transform_datatypes.h>
 #include <base_local_planner/goal_functions.h>
 #include <base_local_planner/footprint_helper.h>
@@ -180,7 +181,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// get latest global to local transform (map to odom)
 	tf::StampedTransform global_to_local;
 	try {
-		m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), global_to_local);
+		auto msg = m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), ros::Duration(0));
+		tf2::fromMsg(msg, global_to_local);
 	} catch(...) {
 		ROS_WARN_NAMED("NeoLocalPlanner", "lookupTransform(m_local_frame, m_global_frame) failed");
 		return false;
@@ -296,8 +298,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	m_local_plan_pub.publish(local_path);
 
 	// compute situational max velocities
-	const double max_trans_vel = fmax(m_limits.max_trans_vel * (m_max_cost - center_cost) / m_max_cost, m_limits.min_trans_vel);
-	const double max_rot_vel = fmax(m_limits.max_rot_vel * (m_max_cost - center_cost) / m_max_cost, m_limits.min_rot_vel);
+	const double max_trans_vel = fmax(m_limits.max_vel_trans * (m_max_cost - center_cost) / m_max_cost, m_limits.min_vel_trans);
+	const double max_rot_vel = fmax(m_limits.max_vel_theta * (m_max_cost - center_cost) / m_max_cost, m_limits.min_vel_theta);
 
 	// find closest point on path to future position
 	auto iter_target = find_closest_point(local_plan.cbegin(), local_plan.cend(), actual_pos);
@@ -372,7 +374,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		{
 			const double stop_accel = 0.8 * m_limits.acc_lim_x;
 			const double stop_time = sqrt(2 * fmax(goal_dist, 0) / stop_accel);
-			const double max_vel_x = fmax(stop_accel * stop_time, m_limits.min_trans_vel);
+			const double max_vel_x = fmax(stop_accel * stop_time, m_limits.min_vel_trans);
 
 			control_vel_x = fmin(control_vel_x, max_vel_x);
 		}
@@ -533,7 +535,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.linear.z = 0;
 	cmd_vel.angular.x = 0;
 	cmd_vel.angular.y = 0;
-	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
+	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
 
 	if(m_update_counter % 20 == 0) {
 		ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, pos_error=(%f, %f), yaw_error=%f, cost=%f, obstacle_dist=%f, obstacle_cost=%f, delta_cost=(%f, %f, %f), state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
@@ -567,7 +569,8 @@ bool NeoLocalPlanner::isGoalReached()
 
 	tf::StampedTransform global_to_local;
 	try {
-		m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), global_to_local);
+		auto msg = m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), ros::Duration(0));
+		tf2::fromMsg(msg, global_to_local);
 	} catch(...) {
 		ROS_WARN_NAMED("NeoLocalPlanner", "lookupTransform(m_local_frame, m_global_frame) failed");
 		return false;
@@ -578,7 +581,7 @@ bool NeoLocalPlanner::isGoalReached()
 	const auto goal_pose_local = global_to_local * goal_pose_global;
 
 	const bool is_stopped = base_local_planner::stopped(*m_odometry,
-														m_limits.rot_stopped_vel,
+														m_limits.theta_stopped_vel,
 														m_limits.trans_stopped_vel);
 
 	const double xy_error = ::hypot(m_odometry->pose.pose.position.x - goal_pose_local.getOrigin().x(),
@@ -618,7 +621,7 @@ bool NeoLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& pla
 	return true;
 }
 
-void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, costmap_2d::Costmap2DROS* costmap_ros)
+void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros)
 {
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~/" + name);
@@ -626,17 +629,17 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 0.5);
 	m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 0.5);
 	m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 0.5);
-	m_limits.acc_limit_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
+	m_limits.acc_lim_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
 	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
 	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
 	m_limits.min_vel_y = 			private_nh.param<double>("min_vel_y", -0.5);
 	m_limits.max_vel_y = 			private_nh.param<double>("max_vel_y", 0.5);
-	m_limits.min_rot_vel = 			private_nh.param<double>("min_rot_vel", 0.1);
-	m_limits.max_rot_vel = 			private_nh.param<double>("max_rot_vel", 0.5);
-	m_limits.min_trans_vel = 		private_nh.param<double>("min_trans_vel", 0.1);
-	m_limits.max_trans_vel = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
-	m_limits.rot_stopped_vel = 		private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_rot_vel);
-	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_trans_vel);
+	m_limits.min_vel_theta = 		private_nh.param<double>("min_rot_vel", 0.1);
+	m_limits.max_vel_theta = 		private_nh.param<double>("max_rot_vel", 0.5);
+	m_limits.min_vel_trans = 		private_nh.param<double>("min_trans_vel", 0.1);
+	m_limits.max_vel_trans = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
+	m_limits.theta_stopped_vel = 	private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_vel_theta);
+	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_vel_trans);
 	m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
 	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.1);
 
