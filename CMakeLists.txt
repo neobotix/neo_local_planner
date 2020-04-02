@@ -20,7 +20,9 @@ find_package(catkin REQUIRED
             nav_msgs
             pluginlib
             roscpp
-            tf
+            tf2_ros
+            tf2_sensor_msgs
+            tf2_geometry_msgs
         )
 
 include_directories(
@@ -41,6 +43,9 @@ catkin_package(
         nav_msgs
         pluginlib
         roscpp
+        tf2_ros
+        tf2_sensor_msgs
+        tf2_geometry_msgs
 )
 
 add_library(neo_local_planner src/NeoLocalPlanner.cpp)

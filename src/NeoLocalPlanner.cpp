@@ -34,8 +34,9 @@
 
 #include "../include/NeoLocalPlanner.h"
 
-#include <tf2/convert.h>
-#include <tf/transform_datatypes.h>
+#include <tf2/utils.h>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <base_local_planner/goal_functions.h>
 #include <base_local_planner/footprint_helper.h>
 #include <pluginlib/class_list_macros.h>
@@ -49,9 +50,16 @@ PLUGINLIB_EXPORT_CLASS(neo_local_planner::NeoLocalPlanner, nav_core::BaseLocalPl
 
 namespace neo_local_planner {
 
-std::vector<tf::Pose>::const_iterator find_closest_point(	std::vector<tf::Pose>::const_iterator begin,
-															std::vector<tf::Pose>::const_iterator end,
-															const tf::Vector3& pos,
+tf2::Quaternion createQuaternionFromYaw(double yaw)
+{
+	tf2::Quaternion q;
+	q.setRPY(0, 0, yaw);
+	return q;
+}
+
+std::vector<tf2::Transform>::const_iterator find_closest_point(	std::vector<tf2::Transform>::const_iterator begin,
+															std::vector<tf2::Transform>::const_iterator end,
+															const tf2::Vector3& pos,
 															double* actual_dist = 0)
 {
 	auto iter_short = begin;
@@ -72,8 +80,8 @@ std::vector<tf::Pose>::const_iterator find_closest_point(	std::vector<tf::Pose>:
 	return iter_short;
 }
 
-std::vector<tf::Pose>::const_iterator move_along_path(	std::vector<tf::Pose>::const_iterator begin,
-														std::vector<tf::Pose>::const_iterator end,
+std::vector<tf2::Transform>::const_iterator move_along_path(	std::vector<tf2::Transform>::const_iterator begin,
+														std::vector<tf2::Transform>::const_iterator end,
 														const double dist, double* actual_dist = 0)
 {
 	auto iter = begin;
@@ -101,8 +109,8 @@ std::vector<tf::Pose>::const_iterator move_along_path(	std::vector<tf::Pose>::co
 
 std::vector<base_local_planner::Position2DInt> get_line_cells(
 								costmap_2d::Costmap2D* cost_map,
-								const tf::Vector3& world_pos_0,
-								const tf::Vector3& world_pos_1)
+								const tf2::Vector3& world_pos_0,
+								const tf2::Vector3& world_pos_1)
 {
 	int coords[2][2] = {};
 	cost_map->worldToMapEnforceBounds(world_pos_0.x(), world_pos_0.y(), coords[0][0], coords[0][1]);
@@ -113,7 +121,7 @@ std::vector<base_local_planner::Position2DInt> get_line_cells(
 	return cells;
 }
 
-double get_cost(costmap_2d::Costmap2DROS* cost_map_ros, const tf::Vector3& world_pos)
+double get_cost(costmap_2d::Costmap2DROS* cost_map_ros, const tf2::Vector3& world_pos)
 {
 	auto cost_map = cost_map_ros->getCostmap();
 
@@ -124,8 +132,8 @@ double get_cost(costmap_2d::Costmap2DROS* cost_map_ros, const tf::Vector3& world
 }
 
 double compute_avg_line_cost(	costmap_2d::Costmap2DROS* cost_map_ros,
-								const tf::Vector3& world_pos_0,
-								const tf::Vector3& world_pos_1)
+								const tf2::Vector3& world_pos_0,
+								const tf2::Vector3& world_pos_1)
 {
 	auto cost_map = cost_map_ros->getCostmap();
 	const std::vector<base_local_planner::Position2DInt> cells = get_line_cells(cost_map, world_pos_0, world_pos_1);
@@ -138,8 +146,8 @@ double compute_avg_line_cost(	costmap_2d::Costmap2DROS* cost_map_ros,
 }
 
 double compute_max_line_cost(	costmap_2d::Costmap2DROS* cost_map_ros,
-								const tf::Vector3& world_pos_0,
-								const tf::Vector3& world_pos_1)
+								const tf2::Vector3& world_pos_0,
+								const tf2::Vector3& world_pos_1)
 {
 	auto cost_map = cost_map_ros->getCostmap();
 	const std::vector<base_local_planner::Position2DInt> cells = get_line_cells(cost_map, world_pos_0, world_pos_1);
@@ -179,7 +187,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const double dt = fmax(fmin((time_now - m_last_time).toSec(), 0.1), 0);
 
 	// get latest global to local transform (map to odom)
-	tf::StampedTransform global_to_local;
+	tf2::Stamped<tf2::Transform> global_to_local;
 	try {
 		auto msg = m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), ros::Duration(0));
 		tf2::fromMsg(msg, global_to_local);
@@ -189,19 +197,19 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	}
 
 	// transform plan to local frame (odom)
-	std::vector<tf::Pose> local_plan;
+	std::vector<tf2::Transform> local_plan;
 	for(const auto& pose : m_global_plan)
 	{
-		tf::Stamped<tf::Pose> pose_;
-		tf::poseStampedMsgToTF(pose, pose_);
+		tf2::Stamped<tf2::Transform> pose_;
+		tf2::fromMsg(pose, pose_);
 		local_plan.push_back(global_to_local * pose_);
 	}
 
 	// get latest local pose
-	tf::Pose local_pose;
-	tf::poseMsgToTF(m_odometry->pose.pose, local_pose);
+	tf2::Transform local_pose;
+	tf2::fromMsg(m_odometry->pose.pose, local_pose);
 
-	const double start_yaw = tf::getYaw(local_pose.getRotation());
+	const double start_yaw = tf2::getYaw(local_pose.getRotation());
 	const double start_vel_x = m_odometry->twist.twist.linear.x;
 	const double start_vel_y = m_odometry->twist.twist.linear.y;
 	const double start_yawrate = m_odometry->twist.twist.angular.z;
@@ -211,15 +219,15 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const double cost_y_lookahead_dist = m_cost_y_lookahead_dist + fmax(start_vel_x, 0) * m_cost_y_lookahead_time;
 
 	// predict future pose (using second order midpoint method)
-	tf::Vector3 actual_pos;
+	tf2::Vector3 actual_pos;
 	double actual_yaw = 0;
 	{
 		const double midpoint_yaw = start_yaw + start_yawrate * m_lookahead_time / 2;
-		actual_pos = local_pose.getOrigin() + tf::Matrix3x3(tf::createQuaternionFromYaw(midpoint_yaw))
-												* tf::Vector3(start_vel_x * m_lookahead_time, 0, 0);
+		actual_pos = local_pose.getOrigin() + tf2::Matrix3x3(createQuaternionFromYaw(midpoint_yaw))
+												* tf2::Vector3(start_vel_x * m_lookahead_time, 0, 0);
 		actual_yaw = start_yaw + start_yawrate * m_lookahead_time;
 	}
-	const tf::Pose actual_pose = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos);
+	const tf2::Transform actual_pose = tf2::Transform(createQuaternionFromYaw(actual_yaw), actual_pos);
 
 	// compute cost gradients
 	const double delta_x = 0.3;
@@ -229,22 +237,22 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	const double center_cost = get_cost(m_cost_map, actual_pos);
 
 	const double delta_cost_x = (
-		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf::Vector3(delta_x, 0, 0)) -
-		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf::Vector3(-delta_x, 0, 0)))
+		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf2::Vector3(delta_x, 0, 0)) -
+		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf2::Vector3(-delta_x, 0, 0)))
 		/ delta_x;
 
 	const double delta_cost_y = (
-		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf::Vector3(cost_y_lookahead_dist, delta_y, 0)) -
-		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf::Vector3(cost_y_lookahead_dist, -delta_y, 0)))
+		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf2::Vector3(cost_y_lookahead_dist, delta_y, 0)) -
+		compute_avg_line_cost(m_cost_map, actual_pos, actual_pose * tf2::Vector3(cost_y_lookahead_dist, -delta_y, 0)))
 		/ delta_y;
 
 	const double delta_cost_yaw = (
 		(
-			compute_avg_line_cost(m_cost_map,	actual_pose * (tf::Matrix3x3(tf::createQuaternionFromYaw(delta_yaw)) * tf::Vector3(delta_x, 0, 0)),
-												actual_pose * (tf::Matrix3x3(tf::createQuaternionFromYaw(delta_yaw)) * tf::Vector3(-delta_x, 0, 0)))
+			compute_avg_line_cost(m_cost_map,	actual_pose * (tf2::Matrix3x3(createQuaternionFromYaw(delta_yaw)) * tf2::Vector3(delta_x, 0, 0)),
+												actual_pose * (tf2::Matrix3x3(createQuaternionFromYaw(delta_yaw)) * tf2::Vector3(-delta_x, 0, 0)))
 		) - (
-			compute_avg_line_cost(m_cost_map,	actual_pose * (tf::Matrix3x3(tf::createQuaternionFromYaw(-delta_yaw)) * tf::Vector3(delta_x, 0, 0)),
-												actual_pose * (tf::Matrix3x3(tf::createQuaternionFromYaw(-delta_yaw)) * tf::Vector3(-delta_x, 0, 0)))
+			compute_avg_line_cost(m_cost_map,	actual_pose * (tf2::Matrix3x3(createQuaternionFromYaw(-delta_yaw)) * tf2::Vector3(delta_x, 0, 0)),
+												actual_pose * (tf2::Matrix3x3(createQuaternionFromYaw(-delta_yaw)) * tf2::Vector3(-delta_x, 0, 0)))
 		)) / (2 * delta_yaw);
 
 	// fill local plan later
@@ -260,8 +268,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		const double delta_move = 0.05;
 		const double delta_time = start_vel_x > m_limits.trans_stopped_vel ? delta_move / start_vel_x : 0;
 
-		tf::Pose pose = actual_pose;
-		tf::Pose last_pose = pose;
+		tf2::Transform pose = actual_pose;
+		tf2::Transform last_pose = pose;
 
 		while(obstacle_dist < 10)
 		{
@@ -278,7 +286,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 			{
 				geometry_msgs::PoseStamped tmp;
-				tf::poseStampedTFToMsg(tf::Stamped<tf::Pose>(pose, m_odometry->header.stamp, m_local_frame), tmp);
+				tf2::toMsg(tf2::Stamped<tf2::Transform>(pose, m_odometry->header.stamp, m_local_frame), tmp);
 				local_path->poses.push_back(tmp);
 			}
 
@@ -287,8 +295,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			}
 
 			last_pose = pose;
-			pose = tf::Pose(tf::createQuaternionFromYaw(tf::getYaw(pose.getRotation()) + start_yawrate * delta_time),
-							pose * tf::Vector3(delta_move, 0, 0));
+			pose = tf2::Transform(createQuaternionFromYaw(tf2::getYaw(pose.getRotation()) + start_yawrate * delta_time),
+							pose * tf2::Vector3(delta_move, 0, 0));
 			obstacle_dist += delta_move;
 		}
 	}
@@ -324,7 +332,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	if(is_goal_target)
 	{
 		// take goal orientation
-		target_yaw = tf::getYaw(iter_target->getRotation());
+		target_yaw = tf2::getYaw(iter_target->getRotation());
 	}
 	else
 	{
@@ -335,12 +343,12 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	}
 
 	// get target position
-	const tf::Vector3 target_pos = iter_target->getOrigin();
+	const tf2::Vector3 target_pos = iter_target->getOrigin();
 
 	// compute errors
 	const double goal_dist = (local_plan.back().getOrigin() - actual_pos).length();
 	const double yaw_error = angles::shortest_angular_distance(actual_yaw, target_yaw);
-	const tf::Vector3 pos_error = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
+	const tf2::Vector3 pos_error = tf2::Transform(createQuaternionFromYaw(actual_yaw), actual_pos).inverse() * target_pos;
 
 	// compute control values
 	bool is_emergency_brake = false;
@@ -567,7 +575,7 @@ bool NeoLocalPlanner::isGoalReached()
 		return true;
 	}
 
-	tf::StampedTransform global_to_local;
+	tf2::Stamped<tf2::Transform> global_to_local;
 	try {
 		auto msg = m_tf->lookupTransform(m_local_frame, m_global_frame, ros::Time(), ros::Duration(0));
 		tf2::fromMsg(msg, global_to_local);
@@ -576,8 +584,8 @@ bool NeoLocalPlanner::isGoalReached()
 		return false;
 	}
 
-	tf::Stamped<tf::Pose> goal_pose_global;
-	tf::poseStampedMsgToTF(m_global_plan.back(), goal_pose_global);
+	tf2::Stamped<tf2::Transform> goal_pose_global;
+	tf2::fromMsg(m_global_plan.back(), goal_pose_global);
 	const auto goal_pose_local = global_to_local * goal_pose_global;
 
 	const bool is_stopped = base_local_planner::stopped(*m_odometry,
@@ -587,8 +595,8 @@ bool NeoLocalPlanner::isGoalReached()
 	const double xy_error = ::hypot(m_odometry->pose.pose.position.x - goal_pose_local.getOrigin().x(),
 									m_odometry->pose.pose.position.y - goal_pose_local.getOrigin().y());
 
-	const double yaw_error = fabs(angles::shortest_angular_distance(tf::getYaw(m_odometry->pose.pose.orientation),
-																	tf::getYaw(goal_pose_local.getRotation())));
+	const double yaw_error = fabs(angles::shortest_angular_distance(tf2::getYaw(m_odometry->pose.pose.orientation),
+																	tf2::getYaw(goal_pose_local.getRotation())));
 
 	const bool is_reached = is_stopped && xy_error < m_limits.xy_goal_tolerance && yaw_error < m_limits.yaw_goal_tolerance;
 
