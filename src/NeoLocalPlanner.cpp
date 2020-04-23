@@ -527,6 +527,21 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	control_yawrate = fmax(fmin(control_yawrate, m_last_cmd_vel.angular.z + m_limits.acc_lim_theta * dt),
 									m_last_cmd_vel.angular.z - m_limits.acc_lim_theta * dt);
 
+	// constrain velocity after goal reached
+	if(m_constrain_final)
+	{
+		tf::Vector3 direction(m_last_control_values[0], m_last_control_values[1], m_last_control_values[2]);
+		if(direction.length() != 0)
+		{
+			direction.normalize();
+			const double dist = direction.dot(tf::Vector3(control_vel_x, control_vel_y, control_yawrate));
+			const auto control = direction * dist;
+			control_vel_x = control[0];
+			control_vel_y = control[1];
+			control_yawrate = control[2];
+		}
+	}
+
 	// fill return data
 	cmd_vel.linear.x = fmin(fmax(control_vel_x, m_limits.min_vel_x), m_limits.max_vel_x);
 	cmd_vel.linear.y = fmin(fmax(control_vel_y, m_limits.min_vel_y), m_limits.max_vel_y);
@@ -641,6 +656,7 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.1);
 
 	m_differential_drive = 	private_nh.param<bool>("differential_drive", true);
+	m_constrain_final = 	private_nh.param<bool>("constrain_final", false);
 	m_goal_tune_time = 		private_nh.param<double>("goal_tune_time", 0.5);
 	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
 	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);

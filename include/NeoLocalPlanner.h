@@ -109,6 +109,7 @@ private:
 	double m_emergency_acc_lim_x = 0;	// [m/s^2]
 
 	bool m_differential_drive = false;
+	bool m_constrain_final = false;
 
 	enum state_t {
 		STATE_IDLE,
