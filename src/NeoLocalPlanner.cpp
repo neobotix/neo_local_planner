@@ -544,7 +544,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		if(direction.length() != 0)
 		{
 			direction.normalize();
-			const double dist = direction.dot(tf::Vector3(control_vel_x, control_vel_y, control_yawrate));
+			const double dist = direction.dot(tf2::Vector3(control_vel_x, control_vel_y, control_yawrate));
 			const auto control = direction * dist;
 			control_vel_x = control[0];
 			control_vel_y = control[1];
