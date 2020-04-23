@@ -540,7 +540,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// constrain velocity after goal reached
 	if(m_constrain_final && m_is_goal_reached)
 	{
-		tf::Vector3 direction(m_last_control_values[0], m_last_control_values[1], m_last_control_values[2]);
+		tf2::Vector3 direction(m_last_control_values[0], m_last_control_values[1], m_last_control_values[2]);
 		if(direction.length() != 0)
 		{
 			direction.normalize();
