@@ -224,7 +224,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	{
 		const double midpoint_yaw = start_yaw + start_yawrate * m_lookahead_time / 2;
 		actual_pos = local_pose.getOrigin() + tf2::Matrix3x3(createQuaternionFromYaw(midpoint_yaw))
-												* tf2::Vector3(start_vel_x * m_lookahead_time, 0, 0);
+												* tf2::Vector3(start_vel_x, start_vel_y, 0) * m_lookahead_time;
 		actual_yaw = start_yaw + start_yawrate * m_lookahead_time;
 	}
 	const tf2::Transform actual_pose = tf2::Transform(createQuaternionFromYaw(actual_yaw), actual_pos);
