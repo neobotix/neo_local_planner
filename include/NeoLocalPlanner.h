@@ -44,6 +44,7 @@
 #include <nav_core/base_local_planner.h>
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/local_planner_limits.h>
+#include <base_local_planner/costmap_model.h> 
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
@@ -82,6 +83,7 @@ private:
 	std::string m_global_frame = "map";
 	std::string m_local_frame = "odom";
 	std::string m_base_frame = "base_link";
+ 	base_local_planner::CostmapModel* model1;	
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 
@@ -129,6 +131,10 @@ private:
 	uint64_t m_update_counter = 0;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
+	const costmap_2d::Costmap2D costmap_;
+	base_local_planner::CostmapModel* world_model_;
+	double obstacle_in_rot = 0;
+	double cost_rot_obstacles = 0;
 
 };
 

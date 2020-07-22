@@ -217,6 +217,29 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 												* tf::Vector3(start_vel_x, start_vel_y, 0) * m_lookahead_time;
 		actual_yaw = start_yaw + start_yawrate * m_lookahead_time;
 	}
+	// Determining the presence of obstacles in the footprint
+	geometry_msgs::Point poses1;
+	poses1.x = actual_pos[0];
+	poses1.y = actual_pos[1];
+	std::vector<geometry_msgs::Point> P1;
+	P1 = m_cost_map->getRobotFootprint();
+	// Updating the robot footprint 
+	for (int i = 0; i<P1.size(); i++)
+	{
+		P1[i].x= P1[i].x+ actual_pos[0]  ;
+		P1[i].y= P1[i].y+ actual_pos[1]  ;
+
+	}
+	world_model_ = new base_local_planner::CostmapModel(*m_cost_map->getCostmap());
+	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 2.0,2.0);
+
+	if(obstacle_in_rot == -1)
+	{
+		ROS_WARN_THROTTLE(3, "During the rotation robot predicted an obstacle - Please free the robot using Joy");
+		cost_rot_obstacles = 0.0;
+	}
+	else{cost_rot_obstacles = 1.0; }
+
 	const tf::Pose actual_pose = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos);
 
 	// compute cost gradients
