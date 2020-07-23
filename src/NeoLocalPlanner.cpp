@@ -233,6 +233,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	world_model_ = new base_local_planner::CostmapModel(*m_cost_map->getCostmap());
 	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 2.0,2.0);
 
+
 	if(m_enable_software_stop == true)
 	{	
 		if(obstacle_in_rot == -1 && (local_pose.getOrigin().z()- actual_yaw < 0))
@@ -587,7 +588,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 	if(m_enable_software_stop == true)
 	{
-		if(temp<0 && right_watchout == 1)
+		if(temp<0 && left_watchout == 1)
 		{
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
 			
@@ -595,7 +596,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			
 
 		}
-		else if(temp>0 && left_watchout == 1)
+		else if(temp>0 && right_watchout == 1)
 		{
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
 
@@ -747,6 +748,7 @@ void NeoLocalPlanner::initialize(std::string name, tf::TransformListener* tf, co
 	m_max_backup_dist = 	private_nh.param<double>("max_backup_dist", m_differential_drive ? 0.1 : 0.0);
 	m_min_stop_dist = 		private_nh.param<double>("min_stop_dist", 0.5);
 	m_emergency_acc_lim_x = private_nh.param<double>("emergency_acc_lim_x", m_limits.acc_lim_x * 4);
+	m_enable_software_stop = private_nh.param<bool>("enable_software_stop", true);
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;
