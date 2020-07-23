@@ -233,12 +233,22 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	world_model_ = new base_local_planner::CostmapModel(*m_cost_map->getCostmap());
 	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 2.0,2.0);
 
-	if(obstacle_in_rot == -1)
-	{
-		ROS_WARN_THROTTLE(3, "During the rotation robot predicted an obstacle - Please free the robot using Joy");
-		cost_rot_obstacles = 0.0;
+	if(m_enable_software_stop == true)
+	{	
+		if(obstacle_in_rot == -1 && (local_pose.getOrigin().z()- actual_yaw < 0))
+		{
+			left_watchout = 1;
+		}
+		else if(obstacle_in_rot == -1 && (local_pose.getOrigin().z()- actual_yaw > 0))
+		{
+			right_watchout = 1;
+		}
+		else
+		{
+			left_watchout = 0;
+			right_watchout = 0;
+		}
 	}
-	else{cost_rot_obstacles = 1.0; }
 
 	const tf::Pose actual_pose = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos);
 
@@ -571,7 +581,42 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.linear.z = 0;
 	cmd_vel.angular.x = 0;
 	cmd_vel.angular.y = 0;
-	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
+	double temp = 0;
+	temp = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
+
+
+	if(m_enable_software_stop == true)
+	{
+		if(temp<0 && right_watchout == 1)
+		{
+			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
+			
+			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel)*0;
+			
+
+		}
+		else if(temp>0 && left_watchout == 1)
+		{
+			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
+
+			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel)*0;
+			
+		}
+		else if(right_watchout == 1 && left_watchout == 1)
+		{
+			cmd_vel.angular.z = 0;
+		}
+		else
+		{
+			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
+		}
+
+	}
+
+	else
+	{
+		cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
+	}
 
 	if(m_update_counter % 20 == 0) {
 		ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, pos_error=(%f, %f), yaw_error=%f, cost=%f, obstacle_dist=%f, obstacle_cost=%f, delta_cost=(%f, %f, %f), state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",

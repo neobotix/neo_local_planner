@@ -110,6 +110,7 @@ private:
 	double m_min_stop_dist = 0;			// [m]
 	double m_emergency_acc_lim_x = 0;	// [m/s^2]
 
+	bool m_enable_software_stop = true; 
 	bool m_differential_drive = false;
 	bool m_constrain_final = false;
 
@@ -134,7 +135,10 @@ private:
 	const costmap_2d::Costmap2D costmap_;
 	base_local_planner::CostmapModel* world_model_;
 	double obstacle_in_rot = 0;
-	double cost_rot_obstacles = 0;
+	double cost_rot_obstacles_left = 1;
+	double cost_rot_obstacles_right = 1;
+	bool left_watchout = 0;
+	bool right_watchout = 0;
 
 };
 
