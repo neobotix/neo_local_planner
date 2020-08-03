@@ -40,7 +40,7 @@
 #include <base_local_planner/goal_functions.h>
 #include <base_local_planner/footprint_helper.h>
 #include <pluginlib/class_list_macros.h>
-#include <base_local_planner/world_model.h>
+
 #include <algorithm>
 
 // register this planner as a BaseGlobalPlanner plugin
@@ -479,7 +479,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		else
 		{
 			// use term for static target orientation
-
 			control_yawrate = yaw_error * m_static_yaw_gain;
 
 			m_state = state_t::STATE_ROTATING;
@@ -581,8 +580,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	// Footprint based collision avoidance
 	if(m_enable_software_stop == true)
 	{
-		
-		
 		if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate < start_yawrate))
 		{
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
@@ -595,19 +592,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
 			cmd_vel.angular.z = 0;
 		}
-		else
-		{
-			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
-		}
-
-
 	}
-
-	else
-	{
-		cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
-	}
-
 	if(m_update_counter % 20 == 0) {
 		ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, pos_error=(%f, %f), yaw_error=%f, cost=%f, obstacle_dist=%f, obstacle_cost=%f, delta_cost=(%f, %f, %f), state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
 						dt, pos_error.x(), pos_error.y(), yaw_error, center_cost, obstacle_dist, obstacle_cost, delta_cost_x, delta_cost_y, delta_cost_yaw, m_state, control_vel_x, control_vel_y, control_yawrate);

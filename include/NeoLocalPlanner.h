@@ -41,15 +41,16 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <costmap_2d/costmap_2d_ros.h>
-#include <costmap_2d/costmap_2d.h>
 #include <nav_core/base_local_planner.h>
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/local_planner_limits.h>
+
 #include <base_local_planner/Position2DInt.h>
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
 #include <base_local_planner/world_model.h>
 #include <base_local_planner/costmap_model.h>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+
 
 namespace neo_local_planner {
 
@@ -67,7 +68,6 @@ public:
 
 	void initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros) override;
 
-
 private:
 	void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
@@ -75,11 +75,12 @@ private:
 	tf2_ros::Buffer* m_tf = 0;
 	costmap_2d::Costmap2DROS* m_cost_map = 0;
 	std::vector<geometry_msgs::PoseStamped> m_global_plan;
+
 	boost::mutex m_odometry_mutex;
 	nav_msgs::Odometry::ConstPtr m_odometry;
+
 	ros::Subscriber m_odom_sub;
 	ros::Publisher m_local_plan_pub;
-
 
 	std::string m_global_frame = "map";
 	std::string m_local_frame = "odom";
@@ -132,12 +133,7 @@ private:
 	uint64_t m_update_counter = 0;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
-	std::vector<base_local_planner::Position2DInt> footprint_cells;
-	Eigen::Vector3f Epos;
-	const costmap_2d::Costmap2D costmap_;
-	double obstacle_in_rot = 0;
-	double cost_rot_obstacles_left = 1;
-	
+
 };
 
 
