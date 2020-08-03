@@ -227,6 +227,23 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 												* tf2::Vector3(start_vel_x, start_vel_y, 0) * m_lookahead_time;
 		actual_yaw = start_yaw + start_yawrate * m_lookahead_time;
 	}
+	// Determining the presence of obstacles in the footprint
+	geometry_msgs::Point poses1;
+	poses1.x = local_pose.getOrigin().x();
+	poses1.y = local_pose.getOrigin().y();
+	std::vector<geometry_msgs::Point> P1;
+	P1 = m_cost_map->getRobotFootprint();
+
+	// Updating the robot footprint 
+	for (int i = 0; i<P1.size(); i++)
+	{
+		auto pos = tf2::Matrix3x3(createQuaternionFromYaw(actual_yaw))* tf2::Vector3(P1[i].x, P1[i].y, 0);
+		P1[i].x= pos[0]+ actual_pos[0];
+		P1[i].y= pos[1]+ actual_pos[1];
+	}
+
+	base_local_planner::CostmapModel world_model_(*m_cost_map->getCostmap());
+	const bool obstacle_in_rot = world_model_.footprintCost(poses1, P1, 1.0,1.0);
 	const tf2::Transform actual_pose = tf2::Transform(createQuaternionFromYaw(actual_yaw), actual_pos);
 
 	// compute cost gradients
@@ -560,6 +577,22 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.angular.y = 0;
 	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
 
+	// Footprint based collision avoidance
+	if(m_enable_software_stop == true)
+	{
+		if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate < start_yawrate))
+		{
+			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
+			
+			cmd_vel.angular.z = 0;
+					}
+		else if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate > start_yawrate))
+		{
+			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
+
+			cmd_vel.angular.z = 0;
+		}
+	}
 	if(m_update_counter % 20 == 0) {
 		ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, pos_error=(%f, %f), yaw_error=%f, cost=%f, obstacle_dist=%f, obstacle_cost=%f, delta_cost=(%f, %f, %f), state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
 						dt, pos_error.x(), pos_error.y(), yaw_error, center_cost, obstacle_dist, obstacle_cost, delta_cost_x, delta_cost_y, delta_cost_yaw, m_state, control_vel_x, control_vel_y, control_yawrate);
@@ -690,6 +723,7 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
 	m_max_backup_dist = 	private_nh.param<double>("max_backup_dist", m_differential_drive ? 0.1 : 0.0);
 	m_min_stop_dist = 		private_nh.param<double>("min_stop_dist", 0.5);
 	m_emergency_acc_lim_x = private_nh.param<double>("emergency_acc_lim_x", m_limits.acc_lim_x * 4);
+	m_enable_software_stop = private_nh.param<bool>("enable_software_stop", true);
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;

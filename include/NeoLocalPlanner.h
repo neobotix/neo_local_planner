@@ -45,6 +45,9 @@
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/local_planner_limits.h>
 
+#include <base_local_planner/Position2DInt.h>
+#include <base_local_planner/world_model.h>
+#include <base_local_planner/costmap_model.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
@@ -108,6 +111,7 @@ private:
 	double m_min_stop_dist = 0;			// [m]
 	double m_emergency_acc_lim_x = 0;	// [m/s^2]
 
+	bool m_enable_software_stop = true; 
 	bool m_differential_drive = false;
 	bool m_constrain_final = false;
 
