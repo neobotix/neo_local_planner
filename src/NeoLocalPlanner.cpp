@@ -170,7 +170,6 @@ NeoLocalPlanner::~NeoLocalPlanner()
 bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 {
 	boost::mutex::scoped_lock lock(m_odometry_mutex);
-	bool obstacles = true;
 
 	if(!m_odometry)
 	{
@@ -243,8 +242,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 		P1[i].y= pos[1]+ actual_pos[1];
 	}
 
-	world_model_ = new base_local_planner::CostmapModel(*m_cost_map->getCostmap());
-	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 1.0,1.0);
+	base_local_planner::CostmapModel world_model_(*m_cost_map->getCostmap());
+	const bool obstacle_in_rot = world_model_.footprintCost(poses1, P1, 1.0,1.0);
 	const tf2::Transform actual_pose = tf2::Transform(createQuaternionFromYaw(actual_yaw), actual_pos);
 
 	// compute cost gradients
@@ -570,9 +569,6 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			control_yawrate = control[2];
 		}
 	}
-	double temp1 = 0;
-	temp1 = control_yawrate;
-
 
 	// fill return data
 	cmd_vel.linear.x = fmin(fmax(control_vel_x, m_limits.min_vel_x), m_limits.max_vel_x);
@@ -580,8 +576,7 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	cmd_vel.linear.z = 0;
 	cmd_vel.angular.x = 0;
 	cmd_vel.angular.y = 0;
-	double temp = 0;
-	temp = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
+	cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_vel_theta), m_limits.max_vel_theta);
 
 	// Footprint based collision avoidance
 	if(m_enable_software_stop == true)
@@ -593,14 +588,12 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
 			
 			cmd_vel.angular.z = 0;
-			left_watchout == 0;
 					}
 		else if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate > start_yawrate))
 		{
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
 
 			cmd_vel.angular.z = 0;
-			right_watchout == 0;
 		}
 		else
 		{

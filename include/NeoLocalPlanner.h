@@ -66,7 +66,6 @@ public:
 	bool setPlan(const std::vector<geometry_msgs::PoseStamped>& plan) override;
 
 	void initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d::Costmap2DROS* costmap_ros) override;
-		base_local_planner::WorldModel* Cm;
 
 
 private:
@@ -78,8 +77,6 @@ private:
 	std::vector<geometry_msgs::PoseStamped> m_global_plan;
 	boost::mutex m_odometry_mutex;
 	nav_msgs::Odometry::ConstPtr m_odometry;
-	base_local_planner::CostmapModel* model1;	
-
 	ros::Subscriber m_odom_sub;
 	ros::Publisher m_local_plan_pub;
 
@@ -112,9 +109,6 @@ private:
 	double m_max_cost = 0;				// [1]
 	double m_min_stop_dist = 0;			// [m]
 	double m_emergency_acc_lim_x = 0;	// [m/s^2]
-	double threshold_cost = 0;
-
-
 
 	bool m_enable_software_stop = true; 
 	bool m_differential_drive = false;
@@ -141,12 +135,8 @@ private:
 	std::vector<base_local_planner::Position2DInt> footprint_cells;
 	Eigen::Vector3f Epos;
 	const costmap_2d::Costmap2D costmap_;
-	base_local_planner::CostmapModel* world_model_;
 	double obstacle_in_rot = 0;
 	double cost_rot_obstacles_left = 1;
-	double cost_rot_obstacles_right = 1;
-	bool left_watchout = 0;
-	bool right_watchout = 0;
 	
 };
 
