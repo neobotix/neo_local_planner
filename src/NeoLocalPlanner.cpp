@@ -219,37 +219,21 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	}
 	// Determining the presence of obstacles in the footprint
 	geometry_msgs::Point poses1;
-	poses1.x = actual_pos[0];
-	poses1.y = actual_pos[1];
+	poses1.x = local_pose.getOrigin().x();
+	poses1.y = local_pose.getOrigin().y();
 	std::vector<geometry_msgs::Point> P1;
 	P1 = m_cost_map->getRobotFootprint();
+
 	// Updating the robot footprint 
 	for (int i = 0; i<P1.size(); i++)
 	{
-		P1[i].x= P1[i].x+ actual_pos[0]  ;
-		P1[i].y= P1[i].y+ actual_pos[1]  ;
-
+		auto pos = tf::Matrix3x3(tf::createQuaternionFromYaw(actual_yaw))* tf::Vector3(P1[i].x, P1[i].y, 0);
+		P1[i].x= pos[0]+ actual_pos[0];
+		P1[i].y= pos[1]+ actual_pos[1];
 	}
+
 	world_model_ = new base_local_planner::CostmapModel(*m_cost_map->getCostmap());
-	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 2.0,2.0);
-
-
-	if(m_enable_software_stop == true)
-	{	
-		if(obstacle_in_rot == -1 && (local_pose.getOrigin().z()- actual_yaw < 0))
-		{
-			left_watchout = 1;
-		}
-		else if(obstacle_in_rot == -1 && (local_pose.getOrigin().z()- actual_yaw > 0))
-		{
-			right_watchout = 1;
-		}
-		else
-		{
-			left_watchout = 0;
-			right_watchout = 0;
-		}
-	}
+	obstacle_in_rot = world_model_->footprintCost(poses1, P1, 1.0,1.0);
 
 	const tf::Pose actual_pose = tf::Pose(tf::createQuaternionFromYaw(actual_yaw), actual_pos);
 
@@ -586,32 +570,27 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	temp = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 
 
+	// Footprint based collision avoidance
 	if(m_enable_software_stop == true)
 	{
-		if(temp<0 && left_watchout == 1)
-		{
-			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
-			
-			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel)*0;
-			
-
-		}
-		else if(temp>0 && right_watchout == 1)
+		if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate < start_yawrate))
 		{
 			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the right! Please free the robot using Joy");
-
-			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel)*0;
 			
-		}
-		else if(right_watchout == 1 && left_watchout == 1)
-		{
 			cmd_vel.angular.z = 0;
+			left_watchout == 0;
+		}
+		else if((obstacle_in_rot == -1) && (control_yawrate- start_yawrate > start_yawrate))
+		{
+			ROS_WARN_THROTTLE(1, "During the rotation robot predicted an obstacle on the left! Please free the robot using Joy");
+
+			cmd_vel.angular.z = 0;
+			right_watchout == 0;
 		}
 		else
 		{
 			cmd_vel.angular.z = fmin(fmax(control_yawrate, -m_limits.max_rot_vel), m_limits.max_rot_vel);
 		}
-
 	}
 
 	else
