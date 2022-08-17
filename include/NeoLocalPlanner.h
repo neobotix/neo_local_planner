@@ -87,6 +87,7 @@ private:
 	std::string m_base_frame = "base_link";
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
+	int count = 0;
 
 	double m_goal_tune_time = 0;		// [s]
 	double m_lookahead_time = 0;		// [s]
@@ -110,10 +111,13 @@ private:
 	double m_max_cost = 0;				// [1]
 	double m_min_stop_dist = 0;			// [m]
 	double m_emergency_acc_lim_x = 0;	// [m/s^2]
+	double m_robot_direction = 1.0;
 
 	bool m_enable_software_stop = true; 
 	bool m_differential_drive = false;
 	bool m_constrain_final = false;
+	bool m_allow_reversing = false;
+	bool m_set_zero_vel = true;
 
 	enum state_t {
 		STATE_IDLE,
