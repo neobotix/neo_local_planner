@@ -51,6 +51,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+#include "neo_local_planner/NeoLocalPlannerConfig.h"
 
 namespace neo_local_planner {
 
@@ -137,6 +138,10 @@ private:
 	uint64_t m_update_counter = 0;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
+
+	// dynamic reconfigure
+	dynamic_reconfigure::Server<NeoLocalPlannerConfig> *dsrv_;
+	void reconfigureCB(NeoLocalPlannerConfig &config, uint32_t level);
 
 };
 

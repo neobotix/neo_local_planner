@@ -167,6 +167,53 @@ NeoLocalPlanner::~NeoLocalPlanner()
 {
 }
 
+void NeoLocalPlanner::reconfigureCB(NeoLocalPlannerConfig& config,uint32_t level) {
+	m_limits.acc_lim_x = config.acc_lim_x;
+	m_limits.acc_lim_y = config.acc_lim_y;
+	m_limits.acc_lim_theta = config.acc_lim_theta;
+	m_limits.acc_lim_trans = config.acc_limit_trans;
+	m_limits.min_vel_x = config.min_vel_x;
+	m_limits.max_vel_x = config.max_vel_x;
+	m_limits.min_vel_y = config.min_vel_y;
+	m_limits.max_vel_y = config.max_vel_y;
+	m_limits.min_vel_theta = config.min_rot_vel;
+	m_limits.max_vel_theta = config.max_rot_vel;
+	m_limits.min_vel_trans = config.min_trans_vel;
+	m_limits.max_vel_trans = config.max_trans_vel;
+	m_limits.theta_stopped_vel = config.rot_stopped_vel;
+	m_limits.trans_stopped_vel = config.trans_stopped_vel;
+	m_limits.yaw_goal_tolerance = config.yaw_goal_tolerance;
+	m_limits.xy_goal_tolerance = config.xy_goal_tolerance;
+
+	m_differential_drive = config.differential_drive;
+	m_constrain_final = config.constrain_final;
+	m_goal_tune_time = config.goal_tune_time;
+	m_lookahead_time = config.lookahead_time;
+	m_lookahead_dist = config.lookahead_dist;
+	m_start_yaw_error = config.start_yaw_error;
+	m_pos_x_gain = config.pos_x_gain;
+	m_pos_y_gain = config.pos_y_gain;
+	m_pos_y_yaw_gain = config.pos_y_yaw_gain;
+	m_yaw_gain = config.yaw_gain;
+	m_static_yaw_gain = config.static_yaw_gain;
+	m_cost_x_gain = config.cost_x_gain;
+	m_cost_y_gain = config.cost_y_gain;
+	m_cost_y_yaw_gain = config.cost_y_yaw_gain;
+	m_cost_y_lookahead_dist = config.cost_y_lookahead_dist;
+	m_cost_y_lookahead_time = config.cost_y_lookahead_time;
+	m_cost_yaw_gain = config.cost_yaw_gain;
+	m_low_pass_gain = config.low_pass_gain;
+	m_max_cost = config.max_cost;
+	m_max_curve_vel = config.max_curve_vel;
+	m_max_goal_dist = config.max_goal_dist;
+	m_max_backup_dist = config.max_backup_dist;
+	m_min_stop_dist = config.min_stop_dist;
+	m_emergency_acc_lim_x = config.emergency_acc_lim_x;
+	m_enable_software_stop = config.enable_software_stop;
+	m_allow_reversing = config.allow_reversing;
+
+}
+
 bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 {
 	boost::mutex::scoped_lock lock(m_odometry_mutex);
@@ -771,49 +818,10 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~/" + name);
 
-	m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 0.5);
-	m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 0.5);
-	m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 0.5);
-	m_limits.acc_lim_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
-	m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
-	m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
-	m_limits.min_vel_y = 			private_nh.param<double>("min_vel_y", -0.5);
-	m_limits.max_vel_y = 			private_nh.param<double>("max_vel_y", 0.5);
-	m_limits.min_vel_theta = 		private_nh.param<double>("min_rot_vel", 0.1);
-	m_limits.max_vel_theta = 		private_nh.param<double>("max_rot_vel", 0.5);
-	m_limits.min_vel_trans = 		private_nh.param<double>("min_trans_vel", 0.1);
-	m_limits.max_vel_trans = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
-	m_limits.theta_stopped_vel = 	private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_vel_theta);
-	m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_vel_trans);
-	m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
-	m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.1);
-
-	m_differential_drive = 	private_nh.param<bool>("differential_drive", true);
-	m_constrain_final = 	private_nh.param<bool>("constrain_final", false);
-	m_goal_tune_time = 		private_nh.param<double>("goal_tune_time", 0.5);
-	m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
-	m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
-	m_start_yaw_error = 	private_nh.param<double>("start_yaw_error", 0.2);
-	m_pos_x_gain = 			private_nh.param<double>("pos_x_gain", 1);
-	m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
-	m_pos_y_yaw_gain = 		private_nh.param<double>("pos_y_yaw_gain", 1);
-	m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
-	m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
-	m_cost_x_gain = 		private_nh.param<double>("cost_x_gain", 0.1);
-	m_cost_y_gain = 		private_nh.param<double>("cost_y_gain", 0.1);
-	m_cost_y_yaw_gain = 	private_nh.param<double>("cost_y_yaw_gain", 0.1);
-	m_cost_y_lookahead_dist = 	private_nh.param<double>("cost_y_lookahead_dist", 0);
-	m_cost_y_lookahead_time = 	private_nh.param<double>("cost_y_lookahead_time", 1);
-	m_cost_yaw_gain = 		private_nh.param<double>("cost_yaw_gain", 1);
-	m_low_pass_gain = 		private_nh.param<double>("low_pass_gain", 0.5);
-	m_max_cost = 			private_nh.param<double>("max_cost", 0.9);
-	m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", 0.2);
-	m_max_goal_dist = 		private_nh.param<double>("max_goal_dist", 0.5);
-	m_max_backup_dist = 	private_nh.param<double>("max_backup_dist", m_differential_drive ? 0.1 : 0.0);
-	m_min_stop_dist = 		private_nh.param<double>("min_stop_dist", 0.5);
-	m_emergency_acc_lim_x = private_nh.param<double>("emergency_acc_lim_x", m_limits.acc_lim_x * 4);
-	m_enable_software_stop = private_nh.param<bool>("enable_software_stop", true);
-	m_allow_reversing = private_nh.param<bool>("allow_reversing", false);
+	dsrv_ = new dynamic_reconfigure::Server<NeoLocalPlannerConfig>(private_nh);
+    dynamic_reconfigure::Server<NeoLocalPlannerConfig>::CallbackType cb =
+        boost::bind(&NeoLocalPlanner::reconfigureCB, this, _1, _2);
+    dsrv_->setCallback(cb);
 
 	m_tf = tf;
 	m_cost_map = costmap_ros;
