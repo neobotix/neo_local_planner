@@ -202,7 +202,9 @@ void NeoLocalPlanner::reconfigureCB(NeoLocalPlannerConfig& config,uint32_t level
 	m_cost_y_lookahead_dist = config.cost_y_lookahead_dist;
 	m_cost_y_lookahead_time = config.cost_y_lookahead_time;
 	m_cost_yaw_gain = config.cost_yaw_gain;
-	m_low_pass_gain = config.low_pass_gain;
+	m_low_pass_gain_x = config.low_pass_gain_x;
+	m_low_pass_gain_y = config.low_pass_gain_y;
+	m_low_pass_gain_yaw = config.low_pass_gain_yaw;
 	m_max_cost = config.max_cost;
 	m_max_curve_vel = config.max_curve_vel;
 	m_max_goal_dist = config.max_goal_dist;
@@ -663,9 +665,9 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	is_emergency_brake = is_emergency_brake && fabs(control_vel_x) >= 0;
 
 	// apply low pass filter
-	control_vel_x = control_vel_x * m_low_pass_gain + m_last_control_values[0] * (1 - m_low_pass_gain);
-	control_vel_y = control_vel_y * m_low_pass_gain + m_last_control_values[1] * (1 - m_low_pass_gain);
-	control_yawrate = control_yawrate * m_low_pass_gain + m_last_control_values[2] * (1 - m_low_pass_gain);
+	control_vel_x = control_vel_x * m_low_pass_gain_x + m_last_control_values[0] * (1 - m_low_pass_gain_x);
+	control_vel_y = control_vel_y * m_low_pass_gain_y + m_last_control_values[1] * (1 - m_low_pass_gain_y);
+	control_yawrate = control_yawrate * m_low_pass_gain_yaw + m_last_control_values[2] * (1 - m_low_pass_gain_yaw);
 
 	// apply acceleration limits
 	if(m_robot_direction == -1.0) {
