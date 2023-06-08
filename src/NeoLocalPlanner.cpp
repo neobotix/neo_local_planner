@@ -445,12 +445,22 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	{
 		// compute path based target orientation
 		auto iter_next = move_along_path(iter_target, local_plan.cend(), lookahead_dist);
-		target_yaw = ::atan2(	iter_next->getOrigin().y() - iter_target->getOrigin().y(),
-								iter_next->getOrigin().x() - iter_target->getOrigin().x());
+		target_yaw = ::atan2(	iter_next->getOrigin().y() - actual_pos.y(),
+								iter_next->getOrigin().x() - actual_pos.x());
+		iter_target = iter_next;
 	}
 
 	// get target position
 	const tf2::Vector3 target_pos = iter_target->getOrigin();
+	geometry_msgs::PoseStamped::Ptr target_pose = boost::make_shared<geometry_msgs::PoseStamped>();
+	target_pose->header.frame_id = m_local_frame;
+	target_pose->header.stamp = m_odometry->header.stamp;
+	target_pose->pose.position.x = target_pos.x();
+	target_pose->pose.position.y = target_pos.y();
+	target_pose->pose.orientation = tf2::toMsg(createQuaternionFromYaw(target_yaw));
+
+	//publish target pose
+	m_target_pose_pub.publish(target_pose);
 
 	double yaw_error = 0.0;
 
@@ -830,6 +840,7 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
 	m_odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 1, boost::bind(&NeoLocalPlanner::odomCallback, this, _1));
 
 	m_local_plan_pub = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+	m_target_pose_pub = private_nh.advertise<geometry_msgs::PoseStamped>("target_pose", 1);
 
 	ROS_INFO_NAMED("NeoLocalPlanner", "base_frame=%s, local_frame=%s, global_frame=%s",
 			m_base_frame.c_str(), m_local_frame.c_str(), m_global_frame.c_str());

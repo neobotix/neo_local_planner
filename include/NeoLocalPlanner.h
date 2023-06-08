@@ -82,6 +82,7 @@ private:
 
 	ros::Subscriber m_odom_sub;
 	ros::Publisher m_local_plan_pub;
+	ros::Publisher m_target_pose_pub;
 
 	std::string m_global_frame = "map";
 	std::string m_local_frame = "odom";
