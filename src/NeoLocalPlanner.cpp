@@ -445,12 +445,22 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 	{
 		// compute path based target orientation
 		auto iter_next = move_along_path(iter_target, local_plan.cend(), lookahead_dist);
-		target_yaw = ::atan2(	iter_next->getOrigin().y() - iter_target->getOrigin().y(),
-								iter_next->getOrigin().x() - iter_target->getOrigin().x());
+		target_yaw = ::atan2(	iter_next->getOrigin().y() - actual_pos.y(),
+								iter_next->getOrigin().x() - actual_pos.x());
+		iter_target = iter_next;
 	}
 
 	// get target position
 	const tf2::Vector3 target_pos = iter_target->getOrigin();
+	geometry_msgs::PoseStamped::Ptr target_pose = boost::make_shared<geometry_msgs::PoseStamped>();
+	target_pose->header.frame_id = m_local_frame;
+	target_pose->header.stamp = m_odometry->header.stamp;
+	target_pose->pose.position.x = target_pos.x();
+	target_pose->pose.position.y = target_pos.y();
+	target_pose->pose.orientation = tf2::toMsg(createQuaternionFromYaw(target_yaw));
+
+	//publish target pose
+	m_target_pose_pub.publish(target_pose);
 
 	double yaw_error = 0.0;
 
@@ -823,50 +833,6 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
         boost::bind(&NeoLocalPlanner::reconfigureCB, this, _1, _2);
     dsrv_->setCallback(cb);
 
-	// m_limits.acc_lim_x = 			private_nh.param<double>("acc_lim_x", 0.5);
-	// m_limits.acc_lim_y = 			private_nh.param<double>("acc_lim_y", 0.5);
-	// m_limits.acc_lim_theta = 		private_nh.param<double>("acc_lim_theta", 0.5);
-	// m_limits.acc_lim_trans = 		private_nh.param<double>("acc_limit_trans", m_limits.acc_lim_x);
-	// m_limits.min_vel_x = 			private_nh.param<double>("min_vel_x", -0.1);
-	// m_limits.max_vel_x = 			private_nh.param<double>("max_vel_x", 0.5);
-	// m_limits.min_vel_y = 			private_nh.param<double>("min_vel_y", -0.5);
-	// m_limits.max_vel_y = 			private_nh.param<double>("max_vel_y", 0.5);
-	// m_limits.min_vel_theta = 		private_nh.param<double>("min_rot_vel", 0.1);
-	// m_limits.max_vel_theta = 		private_nh.param<double>("max_rot_vel", 0.5);
-	// m_limits.min_vel_trans = 		private_nh.param<double>("min_trans_vel", 0.1);
-	// m_limits.max_vel_trans = 		private_nh.param<double>("max_trans_vel", m_limits.max_vel_x);
-	// m_limits.theta_stopped_vel = 	private_nh.param<double>("rot_stopped_vel", 0.5 * m_limits.min_vel_theta);
-	// m_limits.trans_stopped_vel = 	private_nh.param<double>("trans_stopped_vel", 0.5 * m_limits.min_vel_trans);
-	// m_limits.yaw_goal_tolerance = 	private_nh.param<double>("yaw_goal_tolerance", 0.02);
-	// m_limits.xy_goal_tolerance = 	private_nh.param<double>("xy_goal_tolerance", 0.1);
-
-	// m_differential_drive = 	private_nh.param<bool>("differential_drive", true);
-	// m_constrain_final = 	private_nh.param<bool>("constrain_final", false);
-	// m_goal_tune_time = 		private_nh.param<double>("goal_tune_time", 0.5);
-	// m_lookahead_time = 		private_nh.param<double>("lookahead_time", 0.2);
-	// m_lookahead_dist = 		private_nh.param<double>("lookahead_dist", 0.5);
-	// m_start_yaw_error = 	private_nh.param<double>("start_yaw_error", 0.2);
-	// m_pos_x_gain = 			private_nh.param<double>("pos_x_gain", 1);
-	// m_pos_y_gain = 			private_nh.param<double>("pos_y_gain", 1);
-	// m_pos_y_yaw_gain = 		private_nh.param<double>("pos_y_yaw_gain", 1);
-	// m_yaw_gain = 			private_nh.param<double>("yaw_gain", 1);
-	// m_static_yaw_gain = 	private_nh.param<double>("static_yaw_gain", 3);
-	// m_cost_x_gain = 		private_nh.param<double>("cost_x_gain", 0.1);
-	// m_cost_y_gain = 		private_nh.param<double>("cost_y_gain", 0.1);
-	// m_cost_y_yaw_gain = 	private_nh.param<double>("cost_y_yaw_gain", 0.1);
-	// m_cost_y_lookahead_dist = 	private_nh.param<double>("cost_y_lookahead_dist", 0);
-	// m_cost_y_lookahead_time = 	private_nh.param<double>("cost_y_lookahead_time", 1);
-	// m_cost_yaw_gain = 		private_nh.param<double>("cost_yaw_gain", 1);
-	// m_low_pass_gain = 		private_nh.param<double>("low_pass_gain", 0.5);
-	// m_max_cost = 			private_nh.param<double>("max_cost", 0.9);
-	// m_max_curve_vel = 		private_nh.param<double>("max_curve_vel", 0.2);
-	// m_max_goal_dist = 		private_nh.param<double>("max_goal_dist", 0.5);
-	// m_max_backup_dist = 	private_nh.param<double>("max_backup_dist", m_differential_drive ? 0.1 : 0.0);
-	// m_min_stop_dist = 		private_nh.param<double>("min_stop_dist", 0.5);
-	// m_emergency_acc_lim_x = private_nh.param<double>("emergency_acc_lim_x", m_limits.acc_lim_x * 4);
-	// m_enable_software_stop = private_nh.param<bool>("enable_software_stop", true);
-	// m_allow_reversing = private_nh.param<bool>("allow_reversing", false);
-
 	m_tf = tf;
 	m_cost_map = costmap_ros;
 	m_base_frame = costmap_ros->getBaseFrameID();
@@ -874,6 +840,7 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
 	m_odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 1, boost::bind(&NeoLocalPlanner::odomCallback, this, _1));
 
 	m_local_plan_pub = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+	m_target_pose_pub = private_nh.advertise<geometry_msgs::PoseStamped>("target_pose", 1);
 
 	ROS_INFO_NAMED("NeoLocalPlanner", "base_frame=%s, local_frame=%s, global_frame=%s",
 			m_base_frame.c_str(), m_local_frame.c_str(), m_global_frame.c_str());
