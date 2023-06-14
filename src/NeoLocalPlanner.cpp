@@ -736,7 +736,8 @@ bool NeoLocalPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 			cmd_vel.angular.z = 0;
 		}
 	}
-	if(m_update_counter % 20 == 0) {
+
+	if(m_update_counter % 20 == 0 and print_debug) {
 		ROS_INFO_NAMED("NeoLocalPlanner", "dt=%f, pos_error=(%f, %f), yaw_error=%f, cost=%f, obstacle_dist=%f, obstacle_cost=%f, delta_cost=(%f, %f, %f), state=%d, cmd_vel=(%f, %f), cmd_yawrate=%f",
 						dt, pos_error.x(), pos_error.y(), yaw_error, center_cost, obstacle_dist, obstacle_cost, delta_cost_x, delta_cost_y, delta_cost_yaw, m_state, control_vel_x, control_vel_y, control_yawrate);
 	}
@@ -838,6 +839,8 @@ void NeoLocalPlanner::initialize(std::string name, tf2_ros::Buffer* tf, costmap_
 	m_tf = tf;
 	m_cost_map = costmap_ros;
 	m_base_frame = costmap_ros->getBaseFrameID();
+
+	print_debug = private_nh.param<bool>("print_debug", false);
 
 	m_odom_sub = nh.subscribe<nav_msgs::Odometry>("/odom", 1, boost::bind(&NeoLocalPlanner::odomCallback, this, _1));
 

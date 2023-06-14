@@ -91,6 +91,8 @@ private:
 	base_local_planner::LocalPlannerLimits m_limits = {};
 	int count = 0;
 
+	bool print_debug = false;
+
 	double m_goal_tune_time = 0;		// [s]
 	double m_lookahead_time = 0;		// [s]
 	double m_lookahead_dist = 0;		// [m]
