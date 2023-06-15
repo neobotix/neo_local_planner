@@ -51,6 +51,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+#include "neo_local_planner/NeoLocalPlannerConfig.h"
 
 namespace neo_local_planner {
 
@@ -81,6 +82,7 @@ private:
 
 	ros::Subscriber m_odom_sub;
 	ros::Publisher m_local_plan_pub;
+	ros::Publisher m_target_pose_pub;
 
 	std::string m_global_frame = "map";
 	std::string m_local_frame = "odom";
@@ -88,6 +90,8 @@ private:
 
 	base_local_planner::LocalPlannerLimits m_limits = {};
 	int count = 0;
+
+	bool print_debug = false;
 
 	double m_goal_tune_time = 0;		// [s]
 	double m_lookahead_time = 0;		// [s]
@@ -104,7 +108,9 @@ private:
 	double m_cost_y_lookahead_dist = 0;	// [m]
 	double m_cost_y_lookahead_time = 0;	// [s]
 	double m_cost_yaw_gain = 0;
-	double m_low_pass_gain = 0;
+	double m_low_pass_gain_x = 0;
+	double m_low_pass_gain_y = 0;
+	double m_low_pass_gain_yaw = 0;
 	double m_max_curve_vel = 0;			// [rad/s]
 	double m_max_goal_dist = 0;			// [m]
 	double m_max_backup_dist = 0;		// [m]
@@ -137,6 +143,10 @@ private:
 	uint64_t m_update_counter = 0;
 	double m_last_control_values[3] = {};
 	geometry_msgs::Twist m_last_cmd_vel;
+
+	// dynamic reconfigure
+	dynamic_reconfigure::Server<NeoLocalPlannerConfig> *dsrv_;
+	void reconfigureCB(NeoLocalPlannerConfig &config, uint32_t level);
 
 };
 
